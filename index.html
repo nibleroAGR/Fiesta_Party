@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+    <title>Ready Party 🎈 | Encuentra tu fiesta ideal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Phosphor Icons for professional iconography -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+
+<body>
+
+    <div id="app">
+
+
+
+        <!-- LANDING PAGE -->
+        <section id="landing-view" class="view active">
+            <header class="hero-header">
+                <div class="top-auth-links">
+                    <a href="#"
+                        onclick="event.preventDefault(); window.setAuthMode(true); showAuth('family')">Registro</a>
+                    <a href="#" onclick="event.preventDefault(); window.setAuthMode(false); showAuth('family')">Iniciar
+                        Sesión</a>
+                </div>
+                <img src="fiesta_logo.png" class="hero-logo" alt="Fiesta Party Logo">
+                <!-- Tabs removed as requested -->
+            </header>
+
+            <div class="search-container">
+                <div class="search-card">
+                    <div class="search-field">
+                        <i class="ph ph-map-pin"></i>
+                        <input type="text" placeholder="¿Dónde es el cumple?">
+                    </div>
+                    <div class="search-field">
+                        <i class="ph ph-calendar"></i>
+                        <input type="date">
+                    </div>
+                    <button class="btn-search" onclick="showView('family-view'); loadVenues();">¡BUSCAR LOCAL!</button>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 40px; color: var(--secondary); padding: 0 20px;">
+                <h2 style="font-weight: 800; font-size: 1.8rem;">Organiza tu cumple<br>fácilmente</h2>
+            </div>
+
+            <!-- Added Registered Venues Grid directly on landing -->
+            <div class="venues-grid" id="venues-list-landing" style="padding: 24px;">
+                <!-- Venues will load here -->
+            </div>
+
+            <footer class="app-footer">
+                <div class="footer-links">
+                    <a href="#">Política de Privacidad</a>
+                    <a href="#">Política de Cookies</a>
+                    <a href="#">Aviso Legal</a>
+                    <a href="#">Contacto</a>
+                </div>
+                <div class="footer-biz">
+                    <h3>¿Tienes un negocio?</h3>
+                    <p>Únete a Ready Party y llega a cientos de familias en tu zona.</p>
+                    <button onclick="window.setAuthMode(false); showAuth('business')" class="btn-secondary">Somos
+                        empresa</button>
+                </div>
+            </footer>
+        </section>
+
+        <!-- AUTH SECTION -->
+        <section id="auth-view" class="view hidden">
+            <div class="card auth-card">
+                <button onclick="showView('landing-view')" class="back-btn"><i class="ph ph-arrow-left"></i></button>
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <img src="new_logo.jpg" alt="Ready Party Logo"
+                        style="width: 60%; max-width: 400px; height: auto; filter: drop-shadow(0 10px 20px rgba(255, 77, 140, 0.3));">
+                </div>
+                <h2 id="auth-title">Acceso Familia</h2>
+                <p id="auth-subtitle">Encuentra el lugar perfecto</p>
+
+                <form id="auth-form">
+                    <div class="input-group">
+                        <label>Email</label>
+                        <input type="email" id="email" required placeholder="hola@ejemplo.com">
+                    </div>
+                    <div class="input-group">
+                        <label>Contraseña</label>
+                        <input type="password" id="password" required placeholder="********">
+                    </div>
+
+                    <!-- Extra fields for registration -->
+                    <div id="register-fields" class="hidden">
+                        <div class="input-group">
+                            <label>Nombre Completo</label>
+                            <input type="text" id="full-name" placeholder="Tu nombre">
+                        </div>
+                    </div>
+
+                    <button type="submit" id="auth-action-btn">Entrar</button>
+                </form>
+
+                <p class="switch-auth">
+                    <span id="switch-text">¿No tienes cuenta?</span>
+                    <button id="toggle-auth-mode" class="text-btn">Regístrate</button>
+                </p>
+            </div>
+        </section>
+
+        <!-- APP: FAMILY DASHBOARD -->
+        <section id="family-view" class="view hidden">
+            <header class="app-header">
+                <h2>Explora 🌍</h2>
+                <div class="user-pill" onclick="logout()" style="cursor: pointer;">
+                    <div style="text-align: right; line-height: 1.2;">
+                        <span id="user-name-display" style="display:block;">Usuario</span>
+                        <small style="font-size: 0.7rem; color: var(--primary);">Salir</small>
+                    </div>
+                    <div class="avatar">👤</div>
+                </div>
+            </header>
+
+            <div class="search-bar">
+                <input type="text" placeholder="¿Qué buscas? (ej. Parque de bolas, Piscina...)">
+                <button>🔍</button>
+            </div>
+
+            <div class="categories">
+                <div class="cat-chip active">Todo</div>
+                <div class="cat-chip">Parques</div>
+                <div class="cat-chip">Talleres</div>
+                <div class="cat-chip">Al aire libre</div>
+            </div>
+
+            <div class="venues-grid" id="venues-list">
+                <!-- Example Card -->
+                <div class="venue-card skeleton">
+                    <div class="venue-img"></div>
+                    <div class="venue-info">
+                        <div class="venue-line"></div>
+                        <div class="venue-line short"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- APP: BUSINESS DASHBOARD -->
+        <section id="business-view" class="view hidden">
+            <header class="app-header business-header">
+                <h2>Mi Local 🏪</h2>
+                <div class="user-pill" onclick="logout()" style="cursor: pointer;">
+                    <div style="text-align: right; line-height: 1.2;">
+                        <span id="biz-name-display">Empresa</span>
+                        <small style="font-size: 0.7rem; color: var(--secondary);">Salir</small>
+                    </div>
+                    <div class="avatar">💼</div>
+                </div>
+            </header>
+
+            <div class="stats-row">
+                <div class="stat-card">
+                    <span class="stat-num">0</span>
+                    <span class="stat-label">Reservas Activas</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-num">0</span>
+                    <span class="stat-label">Visitas Perfil</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Gestionar Perfil</h3>
+                <form id="venue-form">
+                    <div class="input-group">
+                        <label>Nombre del Local</label>
+                        <input type="text" id="venue-name" placeholder="Ej. Diverlandia">
+                    </div>
+                    <div class="input-group">
+                        <label>Descripción</label>
+                        <textarea id="venue-desc" rows="3" placeholder="Describe tu local..."></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="input-group">
+                            <label>Precio / niño (€)</label>
+                            <input type="number" id="venue-price">
+                        </div>
+                        <div class="input-group">
+                            <label>Aforo Máx.</label>
+                            <input type="number" id="venue-capacity">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Foto de Portada</label>
+                        <input type="file" id="venue-cover-input" accept="image/*">
+                        <div id="cover-preview"
+                            style="margin-top:10px; height:150px; background:#f0f0f0; border-radius:12px; background-size:cover; background-position:center;">
+                        </div>
+                    </div>
+
+                    <h3>Galería de Fotos 📸</h3>
+                    <div class="input-group">
+                        <input type="file" id="venue-gallery-input" accept="image/*" multiple>
+                    </div>
+                    <div id="gallery-preview-grid" class="gallery-grid">
+                        <!-- Preview images -->
+                    </div>
+
+                    <h3>Servicios Extra ✨</h3>
+                    <div class="services-manager">
+                        <ul id="business-services-list"></ul>
+                        <div class="row" style="margin-top:10px;">
+                            <input type="text" id="new-service-name" placeholder="Nombre (ej. Tarta)">
+                            <input type="number" id="new-service-price" placeholder="€" style="width:80px;">
+                            <button type="button" id="btn-add-service" class="btn-secondary"
+                                style="width:auto;">+</button>
+                        </div>
+                    </div>
+
+                    <h3>Configuración de Horario 📅</h3>
+                    <div
+                        style="background: #fdf2f8; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #fce7f3;">
+                        <h4 style="margin-bottom: 10px; font-size: 0.9rem;">Días de Apertura</h4>
+                        <div class="days-grid"
+                            style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 15px;">
+                            <label><input type="checkbox" name="openDays" value="1"> Lun</label>
+                            <label><input type="checkbox" name="openDays" value="2"> Mar</label>
+                            <label><input type="checkbox" name="openDays" value="3"> Mié</label>
+                            <label><input type="checkbox" name="openDays" value="4"> Jue</label>
+                            <label><input type="checkbox" name="openDays" value="5"> Vie</label>
+                            <label><input type="checkbox" name="openDays" value="6"> Sáb</label>
+                            <label><input type="checkbox" name="openDays" value="0"> Dom</label>
+                        </div>
+
+                        <h4 style="margin-bottom: 10px; font-size: 0.9rem;">Franjas Horarias</h4>
+                        <div class="row" style="margin-bottom: 10px;">
+                            <input type="time" id="new-slot-time">
+                            <button type="button" id="btn-add-slot" class="btn-secondary"
+                                style="width: auto;">+</button>
+                        </div>
+                        <div id="slots-list" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                        <!-- Container for chips -->
+
+                        <h4 style="margin-top: 15px; margin-bottom: 10px; font-size: 0.9rem;">Bloquear Fechas</h4>
+                        <div class="row" style="margin-bottom: 10px;">
+                            <input type="date" id="new-blocked-date">
+                            <button type="button" id="btn-block-date" class="btn-danger"
+                                style="width: auto; background: #ef4444; color: white; border: none; border-radius: 12px; padding: 0 15px;">Bloquear</button>
+                        </div>
+                        <div id="blocked-dates-list" style="display: flex; flex-direction: column; gap: 5px;"></div>
+                    </div>
+
+                    <button type="submit" class="btn-save">Guardar Cambios</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- APP: VENUE DETAIL VIEW (FAMILY) -->
+        <section id="venue-detail-view" class="view hidden">
+            <button onclick="showView('family-view')" class="back-btn"
+                style="position:fixed; z-index:10; background:rgba(255,255,255,0.8); padding:10px; border-radius:50%; box-shadow:0 4px 10px rgba(0,0,0,0.1);"><i
+                    class="ph ph-arrow-left"></i></button>
+
+            <div id="detail-cover" class="detail-hero"></div>
+
+            <div class="detail-content">
+                <h1 id="detail-name">Nombre Local</h1>
+                <div class="detail-meta">
+                    <span id="detail-price" class="venue-price">0€</span>
+                    <span><i class="ph ph-users"></i> <span id="detail-capacity">0</span> pax</span>
+                </div>
+
+                <p id="detail-desc" class="venue-desc">Descripción...</p>
+
+                <h3>Galería</h3>
+                <div id="detail-gallery" class="gallery-grid full-width"></div>
+
+                <h3>Servicios Adicionales</h3>
+                <div id="detail-services-list" class="services-selection">
+                    <!-- Checkboxes for services -->
+                </div>
+
+                <div class="booking-controls"
+                    style="margin-top: 20px; background: #f9fafb; padding: 15px; border-radius: 12px;">
+                    <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                        <div style="flex: 1;">
+                            <label
+                                style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 5px;">Nº
+                                Niños</label>
+                            <input type="number" id="booking-kids" min="1" value="10" oninput="calcTotal()"
+                                style="width: 100%; padding: 10px; border: 1px solid var(--border-light); border-radius: 8px;">
+                        </div>
+                        <div style="flex: 1;">
+                            <label
+                                style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 5px;">Fecha</label>
+                            <input type="date" id="booking-date" onchange="validateBookingDate()"
+                                style="width: 100%; padding: 10px; border: 1px solid var(--border-light); border-radius: 8px; font-family: inherit;">
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 5px;">
+                        <label
+                            style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 5px;">Hora
+                            de Inicio</label>
+                        <select id="booking-time" disabled
+                            style="width: 100%; padding: 10px; border: 1px solid var(--border-light); border-radius: 8px; background: white;">
+                            <option value="">Selecciona fecha primero...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="booking-dock">
+                    <div class="total-price">
+                        <small>Total estimado</small>
+                        <span id="booking-total">0€</span>
+                    </div>
+                    <div id="booking-button-container">
+                        <button id="book-btn" class="btn-primary" onclick="attemptBooking()">Solicitar Reserva</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-firestore-compat.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
