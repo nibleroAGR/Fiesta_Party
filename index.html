@@ -39,13 +39,15 @@
                 <div class="search-card">
                     <div class="search-field">
                         <i class="ph ph-map-pin"></i>
-                        <input type="text" placeholder="¿Dónde es el cumple?">
+                        <input type="text" id="search-location" placeholder="¿Dónde es el cumple?" list="cities-list"
+                            autocomplete="off">
+                        <datalist id="cities-list"></datalist>
                     </div>
                     <div class="search-field">
                         <i class="ph ph-calendar"></i>
-                        <input type="date">
+                        <input type="date" id="search-date">
                     </div>
-                    <button class="btn-search" onclick="showView('family-view'); loadVenues();">¡BUSCAR LOCAL!</button>
+                    <button class="btn-search" onclick="applySearch()">¡BUSCAR LOCAL!</button>
                 </div>
             </div>
 
@@ -79,8 +81,8 @@
             <div class="card auth-card">
                 <button onclick="showView('landing-view')" class="back-btn"><i class="ph ph-arrow-left"></i></button>
                 <div style="text-align: center; margin-bottom: 30px;">
-                    <img src="new_logo.jpg" alt="Ready Party Logo"
-                        style="width: 60%; max-width: 400px; height: auto; filter: drop-shadow(0 10px 20px rgba(255, 77, 140, 0.3));">
+                    <img src="fiesta_logo.png" alt="Fiesta Party Logo"
+                        style="width: 70%; max-width: 400px; height: auto;">
                 </div>
                 <h2 id="auth-title">Acceso Familia</h2>
                 <p id="auth-subtitle">Encuentra el lugar perfecto</p>
@@ -184,6 +186,10 @@
                     <div class="input-group">
                         <label>Descripción</label>
                         <textarea id="venue-desc" rows="3" placeholder="Describe tu local..."></textarea>
+                    </div>
+                    <div class="input-group">
+                        <label>Ciudad / Pueblo</label>
+                        <input type="text" id="venue-city" placeholder="Ej: Madrid, Alcorcón...">
                     </div>
                     <div class="row">
                         <div class="input-group">

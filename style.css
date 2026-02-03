@@ -51,7 +51,7 @@ body {
 /* LANDING / HERO AREA */
 .hero-header {
     background: var(--bg-header);
-    padding: 30px 20px 100px 20px;
+    padding: 10px 20px 65px 20px;
     text-align: center;
     position: relative;
     border-radius: 0 0 30px 30px;
@@ -73,8 +73,10 @@ body {
 }
 
 .hero-logo {
-    width: 180px;
-    margin-bottom: 20px;
+    width: 405px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    display: inline-block;
 }
 
 .hero-nav-tabs {

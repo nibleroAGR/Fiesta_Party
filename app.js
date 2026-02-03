@@ -207,6 +207,7 @@ async function loadBusinessProfile() {
         document.getElementById('biz-name-display').innerText = data.name;
         document.getElementById('venue-name').value = data.name;
         document.getElementById('venue-desc').value = data.description || "";
+        document.getElementById('venue-city').value = data.city || "";
         document.getElementById('venue-price').value = data.price || "";
         document.getElementById('venue-capacity').value = data.capacity || "";
 
@@ -352,6 +353,7 @@ document.getElementById('venue-form').addEventListener('submit', async (e) => {
     const updates = {
         name: document.getElementById('venue-name').value,
         description: document.getElementById('venue-desc').value,
+        city: document.getElementById('venue-city').value.trim(),
         price: parseFloat(document.getElementById('venue-price').value),
         capacity: parseInt(document.getElementById('venue-capacity').value),
         services: currentVenueServices,
@@ -374,7 +376,7 @@ document.getElementById('venue-form').addEventListener('submit', async (e) => {
 
 
 // --- Family Logic ---
-async function loadVenues() {
+async function loadVenues(filters = {}) {
     // Check which list to populate (landing or family dashboard)
     const isLanding = !currentUser || !document.getElementById('landing-view').classList.contains('hidden');
     const gridId = isLanding ? 'venues-list-landing' : 'venues-list';
@@ -392,8 +394,31 @@ async function loadVenues() {
         }
 
         grid.innerHTML = '';
+        let count = 0;
+
         snapshot.forEach(doc => {
             const v = doc.data();
+
+            // --- FILTER LOGIC ---
+            if (filters.city) {
+                if (!v.city || !v.city.toLowerCase().includes(filters.city.toLowerCase())) return;
+            }
+
+            if (filters.date) {
+                const dateObj = new Date(filters.date);
+                const dayOfWeek = dateObj.getDay(); // 0=Sun, 1=Mon...
+
+                // Check Blocked Dates
+                if (v.blockedDates && v.blockedDates.includes(filters.date)) return;
+
+                // Check Open Days
+                if (v.scheduleDays && v.scheduleDays.length > 0 && !v.scheduleDays.includes(dayOfWeek)) return;
+
+                // Check Time Slots (must have at least one)
+                if (!v.timeSlots || v.timeSlots.length === 0) return;
+            }
+
+            count++;
             const coverStyle = v.coverImage ? `background-image: url(${v.coverImage}); background-size:cover;` : `background-color: ${stringToColor(v.name)}`;
 
             grid.innerHTML += `
@@ -406,18 +431,59 @@ async function loadVenues() {
                     </div>
                     <p class="venue-desc">${v.description ? v.description.substring(0, 60) : ''}...</p>
                     <div class="venue-footer">
+                        <span><i class="ph ph-map-pin"></i> ${v.city || 'Ubicación n/d'}</span>
                         <span><i class="ph ph-users"></i> Cap: ${v.capacity}</span>
-                        <button class="btn-view">Ver Detalles</button>
                     </div>
                 </div>
             </div>
             `;
         });
+
+        if (count === 0) {
+            grid.innerHTML = '<p style="text-align:center; padding:20px; grid-column: 1/-1;">No se encontraron locales con esos filtros.</p>';
+        }
+
     } catch (err) {
         console.error(err);
         grid.innerHTML = '<p style="text-align:center; color:red;">Error cargando locales</p>';
     }
 }
+
+// Search & Autocomplete Implementation
+window.applySearch = () => {
+    const city = document.getElementById('search-location').value;
+    const date = document.getElementById('search-date').value;
+
+    // Switch to family view to see results
+    showView('family-view');
+    loadVenues({ city, date });
+};
+
+async function initAutocomplete() {
+    const datalist = document.getElementById('cities-list');
+    if (!datalist) return;
+
+    try {
+        const snapshot = await db.collection('venues').get();
+        const cities = new Set();
+        snapshot.forEach(doc => {
+            const v = doc.data();
+            if (v.city) cities.add(v.city.trim());
+        });
+
+        datalist.innerHTML = '';
+        cities.forEach(city => {
+            const option = document.createElement('option');
+            option.value = city;
+            datalist.appendChild(option);
+        });
+    } catch (err) {
+        console.error("Error loading cities:", err);
+    }
+}
+
+// Call on startup
+initAutocomplete();
 
 // Venue Detail Modal
 window.openVenueDetail = async (venueId) => {
