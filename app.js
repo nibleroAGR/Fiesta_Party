@@ -463,10 +463,10 @@ async function loadGuests() {
 
     guests.forEach((g, i) => {
         container.innerHTML += `
-        <div class="guest-item ${g.confirmed ? 'confirmed' : ''}" style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="flex-grow:1; margin-right:10px;">${g.name}</span>
-            <div style="display:flex; align-items:center; gap:12px;">
-                <i class="ph ph-trash" onclick="deleteGuest(${i})" style="color:#e2e8f0; cursor:pointer; font-size:1.1rem; transition:color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#e2e8f0'"></i>
+        <div class="guest-item ${g.confirmed ? 'confirmed' : ''}">
+            <span style="flex-grow:1; margin-right:10px; font-weight: 500;">${g.name}</span>
+            <div style="display:flex; align-items:center; gap:16px;">
+                <i class="ph ph-trash guest-delete-btn" onclick="deleteGuest(${i})"></i>
                 <div class="check-circle" onclick="toggleGuest(${i})">
                     <i class="ph ph-check" style="display:${g.confirmed ? 'block' : 'none'}"></i>
                 </div>
