@@ -430,24 +430,7 @@ button:active {
     background: white;
     border-radius: 50px;
     padding-left: 20px;
-    padding-right: 50px;
-}
-
-.search-bar button {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: var(--text-main);
-    color: white;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
+    padding-right: 20px;
 }
 
 .categories {
@@ -633,6 +616,36 @@ button:active {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
 }
 
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: white;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+    display: flex;
+    justify-content: space-around;
+    padding: 15px 0 25px 0;
+    /* Extra padding for phone bottom safe area */
+    z-index: 1000;
+    border-top: 1px solid var(--border-light);
+}
+
+.nav-item {
+    font-size: 1.6rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 10px;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.nav-item.active {
+    color: var(--primary);
+    background: rgba(255, 0, 128, 0.1);
+    transform: translateY(-5px);
+}
+
 .nav-logo {
     color: white;
     font-weight: 700;
@@ -650,6 +663,72 @@ button:active {
 
 #logout-btn:hover {
     background: rgba(255, 255, 255, 0.2);
+}
+
+/* Family Features Styles */
+.guests-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.guest-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid var(--border-light);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+}
+
+.check-circle {
+    width: 24px;
+    height: 24px;
+    border: 2px solid #ddd;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.guest-item.confirmed .check-circle {
+    background: #10b981;
+    border-color: #10b981;
+    color: white;
+}
+
+.guest-item.confirmed span {
+    text-decoration: line-through;
+    color: #999;
+}
+
+.notes-container {
+    min-height: 100px;
+    background: #fcfcfc;
+    border: 2px dashed #eee;
+    border-radius: 12px;
+    padding: 10px;
+}
+
+.note-item {
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border-left: 4px solid var(--accent);
+    cursor: grab;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.note-item:active {
+    cursor: grabbing;
 }
 
 /* Gallery Grid */
@@ -760,6 +839,74 @@ button:active {
     font-size: 1.5rem;
     font-weight: 800;
     color: var(--primary);
+}
+
+/* Form Organization */
+/* Form Organization */
+.form-section {
+    margin-bottom: 25px;
+    padding: 20px;
+    border-radius: var(--radius-m);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.form-section:nth-child(1) {
+    background: #fdf2f8;
+    border-color: #fce7f3;
+}
+
+/* Pink-ish */
+.form-section:nth-child(2) {
+    background: #eff6ff;
+    border-color: #dbeafe;
+}
+
+/* Blue-ish */
+.form-section:nth-child(3) {
+    background: #f0fdf4;
+    border-color: #dcfce7;
+}
+
+/* Green-ish */
+.form-section:nth-child(4) {
+    background: #fff7ed;
+    border-color: #ffedd5;
+}
+
+/* Orange-ish */
+.form-section:nth-child(5) {
+    background: #faf5ff;
+    border-color: #f3e8ff;
+}
+
+/* Purple-ish */
+.form-section:nth-child(6) {
+    background: #fffbe0;
+    border-color: #fef9c3;
+}
+
+/* Yellow-ish */
+
+.form-section h3 {
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+    color: var(--secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.form-block {
+    margin-bottom: 15px;
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+}
+
+.form-row .input-group {
+    flex: 1;
 }
 
 .services-selection label {

@@ -20,18 +20,25 @@ let isRegistering = false;
 let intendedRole = null; // Role selected on landing
 
 // --- DOM Navigation ---
+// --- DOM Navigation ---
 function showView(viewId) {
     document.querySelectorAll('.view').forEach(el => el.classList.add('hidden'));
     document.getElementById(viewId).classList.remove('hidden');
 
-    // Toggle Nav
-    // Toggle Nav (Removed)
-    // const nav = document.getElementById('main-nav');
-    // if (viewId === 'family-view' || viewId === 'business-view') {
-    //    nav.classList.remove('hidden');
-    // } else {
-    //    nav.classList.add('hidden');
-    // }
+    // Toggle Navbar visibility based on view
+    const mainNav = document.getElementById('main-nav');
+    const familyNav = document.getElementById('family-nav');
+
+    if (viewId === 'landing-view') {
+        if (mainNav) mainNav.style.display = 'flex';
+        if (familyNav) familyNav.classList.add('hidden');
+    } else if (['family-view', 'reservation-view', 'invitations-view', 'notes-view'].includes(viewId)) {
+        if (mainNav) mainNav.style.display = 'none'; // Family users use bottom nav
+        if (familyNav) familyNav.classList.remove('hidden');
+    } else {
+        if (mainNav) mainNav.style.display = 'none';
+        if (familyNav) familyNav.classList.add('hidden');
+    }
 }
 
 // --- UI Helpers ---
@@ -165,7 +172,9 @@ auth.onAuthStateChanged(async (user) => {
             // Redirect based on role
             if (userRole === 'family') {
                 document.getElementById('user-name-display').innerText = data.name;
-                showView('family-view');
+                // Start at family-view ("Explora") by default
+                const initialTab = document.querySelector('.nav-item'); // First item is search/explore
+                switchFamilyTab('family-view', initialTab);
                 loadVenues();
             } else if (userRole === 'business') {
                 showView('business-view');
@@ -208,7 +217,10 @@ async function loadBusinessProfile() {
         document.getElementById('venue-name').value = data.name;
         document.getElementById('venue-desc').value = data.description || "";
         document.getElementById('venue-city').value = data.city || "";
+        document.getElementById('venue-address').value = data.address || "";
+        document.getElementById('venue-tags').value = data.tags ? data.tags.join(', ') : "";
         document.getElementById('venue-price').value = data.price || "";
+        document.getElementById('venue-min-kids').value = data.minKids || 10;
         document.getElementById('venue-capacity').value = data.capacity || "";
 
         // Load Extended Data
@@ -341,45 +353,379 @@ window.removeGalleryItem = (idx) => {
     renderGalleryPreview();
 }
 
-// Save Profile
-document.getElementById('venue-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!currentUser) return;
+// --- Auto-Save Business Profile Logic ---
+let saveTimeout;
 
-    // Get Open Days
-    const openDays = [];
-    document.querySelectorAll('input[name="openDays"]:checked').forEach(cb => openDays.push(parseInt(cb.value)));
+async function autoSaveVenue() {
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(async () => {
+        if (!currentUser || userRole !== 'business') return;
 
-    const updates = {
-        name: document.getElementById('venue-name').value,
-        description: document.getElementById('venue-desc').value,
-        city: document.getElementById('venue-city').value.trim(),
-        price: parseFloat(document.getElementById('venue-price').value),
-        capacity: parseInt(document.getElementById('venue-capacity').value),
-        services: currentVenueServices,
-        gallery: currentVenueGallery,
-        coverImage: currentCoverImage,
-        scheduleDays: openDays,
-        timeSlots: window.currentSchedule.timeSlots,
-        blockedDates: window.currentSchedule.blockedDates
-    };
+        // Get Open Days
+        const openDays = [];
+        document.querySelectorAll('input[name="openDays"]:checked').forEach(cb => openDays.push(parseInt(cb.value)));
 
-    try {
-        await db.collection('venues').doc(currentUser.uid).update(updates);
-        alert("¡Perfil actualizado con éxito!");
-        document.getElementById('biz-name-display').innerText = updates.name;
-    } catch (err) {
-        console.error(err);
-        alert("Error al guardar");
+        const tagString = document.getElementById('venue-tags').value || "";
+        const tags = tagString.split(',').map(t => t.trim()).filter(t => t.length > 0);
+
+        const updates = {
+            name: document.getElementById('venue-name').value,
+            description: document.getElementById('venue-desc').value,
+            city: document.getElementById('venue-city').value.trim(),
+            address: document.getElementById('venue-address').value.trim(),
+            tags: tags,
+            price: parseFloat(document.getElementById('venue-price').value) || 0,
+            minKids: parseInt(document.getElementById('venue-min-kids').value) || 10,
+            capacity: parseInt(document.getElementById('venue-capacity').value) || 0,
+            services: currentVenueServices,
+            gallery: currentVenueGallery,
+            coverImage: currentCoverImage,
+            scheduleDays: openDays,
+            timeSlots: window.currentSchedule.timeSlots,
+            blockedDates: window.currentSchedule.blockedDates
+        };
+
+        // Visual Feedback (could be a toast or subtle indicator)
+        const btn = document.querySelector('#venue-form button[type="submit"]');
+        if (btn) btn.innerText = "Guardando...";
+
+        try {
+            await db.collection('venues').doc(currentUser.uid).update(updates);
+            if (btn) {
+                btn.innerText = "Guardado";
+                setTimeout(() => btn.innerText = "Guardar Perfil (Auto)", 2000);
+            }
+            document.getElementById('biz-name-display').innerText = updates.name;
+        } catch (err) {
+            console.error("Auto-save error:", err);
+            if (btn) btn.innerText = "Error al guardar";
+        }
+    }, 1000); // 1 second debounce
+}
+
+// Attach Auto-Save Listeners
+const venueInputs = [
+    'venue-name', 'venue-desc', 'venue-city', 'venue-address',
+    'venue-tags', 'venue-price', 'venue-min-kids', 'venue-capacity'
+];
+
+venueInputs.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+        el.addEventListener('input', autoSaveVenue);
     }
 });
 
+// Also attach to days checkboxes
+document.querySelectorAll('input[name="openDays"]').forEach(el => {
+    el.addEventListener('change', autoSaveVenue);
+});
+
+// Override submit to trigger save immediately
+document.getElementById('venue-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    autoSaveVenue();
+});
+
+
+// --- Family Dashboard Extensions ---
+
+window.switchFamilyTab = (viewId, el) => {
+    // Use global showView to ensure all other views (auth, landing, etc.) are hidden
+    showView(viewId);
+
+    // Update Nav Active State
+    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    if (el) el.classList.add('active');
+
+    // Load data if needed
+    if (viewId === 'invitations-view') loadGuests();
+    if (viewId === 'notes-view') loadNotes();
+    if (viewId === 'reservation-view') loadActiveReservation();
+};
+
+// Invitations
+async function loadGuests() {
+    if (!currentUser) return;
+    const container = document.getElementById('guests-list');
+    container.innerHTML = '<p class="loading-text">Cargando...</p>';
+
+    // Using a subcollection or main collection with query
+    // Simple approach: store in user document
+    const doc = await db.collection('users').doc(currentUser.uid).get();
+    const guests = doc.data().guests || [];
+
+    container.innerHTML = '';
+    if (guests.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:#ddd;">Añade invitados a tu lista</p>';
+        return;
+    }
+
+    guests.forEach((g, i) => {
+        container.innerHTML += `
+        <div class="guest-item ${g.confirmed ? 'confirmed' : ''}" style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="flex-grow:1; margin-right:10px;">${g.name}</span>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <i class="ph ph-trash" onclick="deleteGuest(${i})" style="color:#e2e8f0; cursor:pointer; font-size:1.1rem; transition:color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#e2e8f0'"></i>
+                <div class="check-circle" onclick="toggleGuest(${i})">
+                    <i class="ph ph-check" style="display:${g.confirmed ? 'block' : 'none'}"></i>
+                </div>
+            </div>
+        </div>`;
+    });
+}
+
+window.addGuest = async () => {
+    const input = document.getElementById('new-guest-name');
+    const name = input.value.trim();
+    if (!name) return;
+
+    const docRef = db.collection('users').doc(currentUser.uid);
+    // Get current guests to append
+    const doc = await docRef.get();
+    const currentGuests = doc.data().guests || [];
+
+    currentGuests.push({ name, confirmed: false });
+
+    await docRef.update({ guests: currentGuests });
+    input.value = '';
+    loadGuests();
+};
+
+window.deleteGuest = async (index) => {
+    if (!confirm("¿Borrar invitado?")) return;
+
+    const docRef = db.collection('users').doc(currentUser.uid);
+    const doc = await docRef.get();
+    let guests = doc.data().guests || [];
+
+    if (guests[index]) { // Check existence
+        guests.splice(index, 1);
+        await docRef.update({ guests });
+        loadGuests();
+    }
+};
+
+window.toggleGuest = async (index) => {
+    const docRef = db.collection('users').doc(currentUser.uid);
+    const doc = await docRef.get();
+    const guests = doc.data().guests || [];
+
+    if (guests[index]) {
+        guests[index].confirmed = !guests[index].confirmed;
+        await docRef.update({ guests });
+        loadGuests();
+    }
+};
+
+// Notes & Drag Drop
+async function loadNotes() {
+    if (!currentUser) return;
+    const doc = await db.collection('users').doc(currentUser.uid).get();
+    const data = doc.data();
+    const todo = data.notesTodo || [];
+    const done = data.notesDone || [];
+
+    renderNotesList('notes-todo', todo, 'todo');
+    renderNotesList('notes-done', done, 'done');
+}
+
+function renderNotesList(containerId, notes, type) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    notes.forEach((text, i) => {
+        const id = `${type}-${i}`;
+        container.innerHTML += `
+        <div class="note-item" draggable="true" ondragstart="drag(event)" id="${id}" data-type="${type}" data-idx="${i}">
+            <span style="flex:1;">${text}</span>
+            <button onclick="deleteNote('${type}', ${i})" style="width:24px; height:24px; background:#fee2e2; color:red; border:none; padding:0; display:flex; align-items:center; justify-content:center; border-radius:4px;">x</button>
+        </div>`;
+    });
+}
+
+window.addNote = async () => {
+    const input = document.getElementById('new-note-text');
+    const text = input.value.trim();
+    if (!text) return;
+
+    const docRef = db.collection('users').doc(currentUser.uid);
+    const doc = await docRef.get();
+    const todo = doc.data().notesTodo || [];
+
+    todo.push(text);
+    await docRef.update({ notesTodo: todo });
+    input.value = '';
+    loadNotes();
+};
+
+window.deleteNote = async (type, idx) => {
+    const docRef = db.collection('users').doc(currentUser.uid);
+    const doc = await docRef.get();
+    let list = (type === 'todo') ? (doc.data().notesTodo || []) : (doc.data().notesDone || []);
+
+    list.splice(idx, 1);
+
+    if (type === 'todo') await docRef.update({ notesTodo: list });
+    else await docRef.update({ notesDone: list });
+
+    loadNotes();
+}
+
+// Drag & Drop Handlers
+window.allowDrop = (ev) => { ev.preventDefault(); };
+window.drag = (ev) => {
+    ev.dataTransfer.setData("id", ev.target.id);
+    ev.dataTransfer.setData("originHtml", ev.target.outerHTML); // Backup
+};
+window.drop = async (ev, targetType) => {
+    ev.preventDefault();
+    const id = ev.dataTransfer.getData("id");
+    const el = document.getElementById(id);
+    const originType = el.getAttribute('data-type');
+    const originIdx = parseInt(el.getAttribute('data-idx'));
+    const text = el.querySelector('span').innerText;
+
+    if (originType === targetType) return; // Same list, do nothing or reorder (simple swap not implemented for brevity)
+
+    // Move logic
+    const docRef = db.collection('users').doc(currentUser.uid);
+    const doc = await docRef.get();
+
+    const sourceList = (originType === 'todo') ? (doc.data().notesTodo || []) : (doc.data().notesDone || []);
+    const targetList = (targetType === 'todo') ? (doc.data().notesTodo || []) : (doc.data().notesDone || []);
+
+    // Remove from source
+    sourceList.splice(originIdx, 1);
+    // Add to target
+    targetList.push(text);
+
+    await docRef.update({
+        notesTodo: (originType === 'todo' ? sourceList : targetList),
+        notesDone: (targetType === 'done' ? targetList : sourceList)
+    });
+
+    loadNotes();
+};
+
+// Reservations
+async function loadActiveReservation() {
+    const container = document.getElementById('active-reservation-container');
+    if (!currentUser) return;
+
+    // Fix: Remove orderBy to avoid index requirement issues
+    // Fetch user reservations
+    const snapshot = await db.collection('reservations')
+        .where('userId', '==', currentUser.uid)
+        .get();
+
+    if (snapshot.empty) {
+        // ... (empty logic remains same below) same as original structure, just changing query part
+        container.innerHTML = `
+            <div style="text-align:center; margin-top:50px;">
+                <div style="font-size:4rem; margin-bottom:10px;">🎈</div>
+                <h3>¡Aún no tienes fiesta!</h3>
+                <p style="color:#888; margin-bottom:20px;">Busca un local y reserva tu día ideal.</p>
+                <button onclick="switchFamilyTab('family-view', document.querySelector('.nav-item.active'))" class="btn-primary">Buscar Locales</button>
+            </div>
+        `;
+        return;
+    }
+
+    // Client-side sort to find latest
+    const reservations = [];
+    snapshot.forEach(doc => reservations.push(doc.data()));
+    // Sort desc by timestamp
+    reservations.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+    const r = reservations[0];
+
+    // Fetch Venue details for full info
+    const vDoc = await db.collection('venues').doc(r.venueId).get();
+    const v = vDoc.exists ? vDoc.data() : {};
+
+    // Create Summary HTML (Green Box)
+    const summaryHTML = `
+        <div class="card" style="background:#f0fdf4; border:1px solid #bbf7d0; margin-bottom:20px;">
+            <div class="row" style="margin-bottom:15px; border-bottom:1px solid rgba(0,0,0,0.05); padding-bottom:10px;">
+                <h2 style="color:#15803d; font-size:1.4rem; margin:0;">✅ Reserva Confirmada</h2>
+                <span style="background:#dcfce7; color:#15803d; padding:4px 12px; border-radius:20px; font-size:0.8rem; font-weight:bold;">${r.status.toUpperCase()}</span>
+            </div>
+            
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                <div>
+                    <label style="font-size:0.75rem; color:#166534; font-weight:700;">LOCAL</label>
+                    <div style="font-size:1.1rem; font-weight:600; color:#14532d;">${r.venueName}</div>
+                </div>
+                <div>
+                    <label style="font-size:0.75rem; color:#166534; font-weight:700;">TOTAL</label>
+                    <div style="font-size:1.2rem; font-weight:bold; color:#15803d;">${r.totalPrice}€</div>
+                </div>
+                <div>
+                    <label style="font-size:0.75rem; color:#166534; font-weight:700;">FECHA</label>
+                    <div style="font-size:1rem; font-weight:600; color:#14532d;">${r.date}</div>
+                </div>
+                <div>
+                    <label style="font-size:0.75rem; color:#166534; font-weight:700;">HORA</label>
+                    <div style="font-size:1rem; font-weight:600; color:#14532d;">${r.time}</div>
+                </div>
+                <div>
+                    <label style="font-size:0.75rem; color:#166534; font-weight:700;">NIÑOS</label>
+                    <div style="font-size:1rem; font-weight:600; color:#14532d;">${r.kids}</div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Create Read-Only Venue Detail HTML (Simulating Guest View)
+    const venueHTML = `
+        <div class="venue-detail-container" style="pointer-events:none; opacity:0.9;">
+            <div class="venue-cover" style="background-image: url(${v.coverImage || ''}); height:200px; background-size:cover; border-radius:12px; margin-bottom:20px;"></div>
+            
+            <h2 style="margin-bottom:10px;">${v.name}</h2>
+            <p style="color:#666; margin-bottom:20px;">${v.description}</p>
+            
+            <div class="info-grid">
+                <div class="info-item">
+                    <i class="ph ph-map-pin"></i>
+                    <span>${v.city}, ${v.address || ''}</span>
+                </div>
+                <div class="info-item">
+                    <i class="ph ph-users"></i>
+                    <span>Capacidad: ${v.capacity}</span>
+                </div>
+            </div>
+
+            <h3 style="margin-top:20px; margin-bottom:10px;">Servicios Incluidos</h3>
+            <div class="services-list">
+                ${(v.services || []).map(s => `
+                    <div class="service-tag">
+                        <span>${s.name}</span>
+                        <span style="font-weight:bold;">${s.price}€</span>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <h3 style="margin-top:20px;">Galería</h3>
+            <div class="gallery-grid">
+                ${(v.gallery || []).map(img => `<div class="gallery-item" style="background-image:url(${img})"></div>`).join('')}
+            </div>
+        </div>
+    `;
+
+    container.innerHTML = summaryHTML + venueHTML;
+}
 
 // --- Family Logic ---
 async function loadVenues(filters = {}) {
-    // Check which list to populate (landing or family dashboard)
-    const isLanding = !currentUser || !document.getElementById('landing-view').classList.contains('hidden');
-    const gridId = isLanding ? 'venues-list-landing' : 'venues-list';
+    // Determine context: Landing vs Family Dashboard
+    let gridId = 'venues-list-landing'; // Default to landing
+
+    if (currentUser && !document.getElementById('family-view').classList.contains('hidden')) {
+        gridId = 'venues-list'; // Family dashboard
+    } else if (!document.getElementById('landing-view').classList.contains('hidden')) {
+        gridId = 'venues-list-landing';
+    }
+
     const grid = document.getElementById(gridId);
 
     if (!grid) return;
@@ -451,12 +797,20 @@ async function loadVenues(filters = {}) {
 
 // Search & Autocomplete Implementation
 window.applySearch = () => {
-    const city = document.getElementById('search-location').value;
-    const date = document.getElementById('search-date').value;
+    let city = "";
 
-    // Switch to family view to see results
-    showView('family-view');
-    loadVenues({ city, date });
+    if (currentUser) {
+        // Logged in user on family-view
+        const input = document.getElementById('family-search-location');
+        if (input) city = input.value;
+    } else {
+        // Guest on landing-view
+        const input = document.getElementById('search-location');
+        if (input) city = input.value;
+    }
+
+    // Pass filter to loadVenues
+    loadVenues({ city });
 };
 
 async function initAutocomplete() {
@@ -518,18 +872,31 @@ window.openVenueDetail = async (venueId) => {
     }
 
     // Services
+    // Services
     const servicesEl = document.getElementById('detail-services-list');
     servicesEl.innerHTML = '';
     if (v.services && v.services.length > 0) {
-        v.services.forEach(s => {
-            servicesEl.innerHTML += `
-            <label>
-                <input type="checkbox" onchange="calcTotal()" data-price="${s.price}">
-                <span style="flex-grow:1;">${s.name}</span>
-                <span style="font-weight:700;">+${s.price}€</span>
-            </label>
-            `;
-        });
+        if (!currentUser) {
+            // Guest View: Simple list
+            const ul = document.createElement('ul');
+            ul.style.listStyle = 'none';
+            ul.style.padding = '0';
+            v.services.forEach(s => {
+                ul.innerHTML += `<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0; color: #555;">${s.name}</li>`;
+            });
+            servicesEl.appendChild(ul);
+        } else {
+            // User View: Selectable checkboxes
+            v.services.forEach(s => {
+                servicesEl.innerHTML += `
+                <label>
+                    <input type="checkbox" onchange="calcTotal()" data-price="${s.price}">
+                    <span style="flex-grow:1;">${s.name}</span>
+                    <span style="font-weight:700;">+${s.price}€</span>
+                </label>
+                `;
+            });
+        }
     } else {
         servicesEl.innerHTML = '<p style="color:#999;">Sin servicios extra</p>';
     }
@@ -539,37 +906,73 @@ window.openVenueDetail = async (venueId) => {
     // Hide nav for full immersion
     if (document.getElementById('main-nav')) document.getElementById('main-nav').classList.add('hidden');
 
-    // Guest Mode: Hide booking button if not logged in
-    const btnContainer = document.getElementById('booking-button-container');
+    const bookingControls = document.querySelector('.booking-controls');
+    const bookingDock = document.querySelector('.booking-dock');
+
+    // Mínimo de niños display (always show info)
+    const minKidsInfo = `<p style="margin-top:10px; color:#666; font-size:0.9rem;"><strong>Mínimo niños:</strong> ${v.minKids || 10}</p>`;
+    // Inject if not present, but handling cleaner below
+
     if (!currentUser) {
-        btnContainer.innerHTML = `
-            <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 12px; border-radius: 12px; text-align: center;">
-                <p style="font-size: 0.85rem; color: #92400e; margin-bottom: 8px;">Inicia sesión para reservar este local</p>
-                <button class="btn-primary" onclick="window.setAuthMode(false); showAuth('family')">Entrar</button>
-            </div>
-        `;
+        // GUEST MODE
+        if (bookingControls) bookingControls.style.display = 'none';
+
+        // Hide standard dock, show big CTA
+        if (bookingDock) {
+            bookingDock.innerHTML = `
+                <div style="width:100%; padding: 0 20px;">
+                    ${minKidsInfo}
+                    <button class="btn-primary" onclick="window.setAuthMode(true); showAuth('family')" 
+                        style="width:100%; margin-top:15px; background: linear-gradient(135deg, #FF0080 0%, #7928CA 100%); font-size:1.1rem; padding: 18px;">
+                        ¡Regístrate para reservar o más información!
+                    </button>
+                </div>
+            `;
+        }
     } else {
-        btnContainer.innerHTML = `<button id="book-btn" class="btn-primary" onclick="attemptBooking()">Solicitar Reserva</button>`;
+        // USER MODE
+        if (bookingControls) bookingControls.style.display = 'block';
+
+        // Restore/Update Booking State elements
+        window.currentVenueId = venueId;
+        window.currentVenuePrice = v.price;
+        window.currentVenueSchedule = {
+            openDays: v.scheduleDays,
+            timeSlots: v.timeSlots,
+            blockedDates: v.blockedDates,
+            minKids: v.minKids || 10
+        };
+
+        const minKidsVal = v.minKids || 10;
+        const kidsInput = document.getElementById('booking-kids');
+        if (kidsInput) {
+            kidsInput.value = minKidsVal;
+            kidsInput.min = minKidsVal;
+        }
+
+        const dateInput = document.getElementById('booking-date');
+        if (dateInput) dateInput.value = '';
+
+        const timeSelect = document.getElementById('booking-time');
+        if (timeSelect) {
+            timeSelect.innerHTML = '<option value="">Selecciona fecha primero...</option>';
+            timeSelect.disabled = true;
+        }
+
+        // Restore Dock content
+        if (bookingDock) {
+            bookingDock.innerHTML = `
+                <div class="total-price">
+                    <small>Total estimado</small>
+                    <span id="booking-total">0€</span>
+                </div>
+                <div id="booking-button-container">
+                    <button id="book-btn" class="btn-primary" onclick="attemptBooking()">Solicitar Reserva</button>
+                </div>
+            `;
+        }
+        calcTotal();
     }
-
-    // Setup Booking State
-    window.currentVenueId = venueId;
-    window.currentVenuePrice = v.price;
-    window.currentVenueSchedule = {
-        openDays: v.scheduleDays,
-        timeSlots: v.timeSlots,
-        blockedDates: v.blockedDates
-    };
-
-    document.getElementById('booking-kids').value = 10; // Reset default
-    document.getElementById('booking-date').value = '';
-
-    // Reset Time Select
-    const timeSelect = document.getElementById('booking-time');
-    timeSelect.innerHTML = '<option value="">Selecciona fecha primero...</option>';
-    timeSelect.disabled = true;
-
-    calcTotal();
 }
 
 // --- Booking Logic ---
