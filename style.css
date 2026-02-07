@@ -1071,37 +1071,56 @@ button:active {
     background-attachment: fixed;
 }
 
-.family-main-logo {
-    width: 90%;
-    max-width: 320px;
-    height: auto;
-    margin-top: 10px;
+.colorful-logo {
+    font-family: "Comic Sans MS", "Comic Sans", cursive, sans-serif;
+    font-size: 3.2rem;
+    font-weight: bold;
+    color: #1a365d;
+    /* Azul Oscuro Profundo */
+    margin-top: 15px;
     margin-bottom: 5px;
-    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.05));
+    text-align: center;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.05));
+    letter-spacing: -1px;
 }
 
 @media (min-width: 768px) {
-    .family-main-logo {
-        max-width: 450px;
-        margin-top: 20px;
+    .colorful-logo {
+        font-size: 5rem;
+        margin-top: 30px;
     }
 }
 
+#family-view {
+    background: linear-gradient(180deg, #f3e8ff 0%, #ffffff 50%);
+    background-attachment: fixed;
+}
+
+#reservation-view {
+    background: linear-gradient(180deg, #f9fafb 0%, #ffffff 50%);
+    background-attachment: fixed;
+}
+
+#reservation-view .section-title-header {
+    background: transparent;
+}
 
 #invitations-view {
-    background-color: #f0f9ff;
+    background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 50%);
+    background-attachment: fixed;
 }
 
 #invitations-view .section-title-header {
-    background-color: #f0f9ff;
+    background: transparent;
 }
 
 #notes-view {
-    background-color: #fffbeb;
+    background: linear-gradient(180deg, #fffbeb 0%, #ffffff 50%);
+    background-attachment: fixed;
 }
 
 #notes-view .section-title-header {
-    background-color: #fffbeb;
+    background: transparent;
 }
 
 .add-item-row {
