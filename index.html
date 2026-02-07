@@ -107,18 +107,17 @@
 
         <!-- APP: FAMILY DASHBOARD (EXPLORE) -->
         <section id="family-view" class="view hidden">
-            <!-- Header matching landing, but with user profile -->
-            <header class="app-header-responsive" style="background: white; margin-bottom: 20px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <img src="fiesta_logo.png" class="app-header-logo" alt="Fiesta Party Logo">
-                    <div class="user-pill" onclick="logout()" style="cursor: pointer; background: #fdf2f8;">
-                        <div style="text-align: right; line-height: 1.2;">
-                            <span id="user-name-display"
-                                style="display:block; color: var(--primary); font-weight: 700;">Usuario</span>
-                            <small style="font-size: 0.7rem; color: var(--secondary);">Salir</small>
-                        </div>
-                        <div class="avatar" style="background: white;">👤</div>
+            <header class="app-header-responsive"
+                style="background: transparent; margin-bottom: 10px; display: flex; flex-direction: column; align-items: center; position: relative;">
+                <img src="logoiniciolog.png" class="family-main-logo" alt="Fiesta Party">
+                <div class="user-pill" onclick="logout()"
+                    style="position: absolute; top: 15px; right: 20px; cursor: pointer; background: #fdf2f8; padding: 4px 4px 4px 12px; border-radius: 50px; display: flex; align-items: center; gap: 8px;">
+                    <div style="text-align: right; line-height: 1.2;">
+                        <span id="user-name-display"
+                            style="display:block; color: var(--primary); font-weight: 700;">Usuario</span>
+                        <small style="font-size: 0.7rem; color: var(--secondary);">Salir</small>
                     </div>
+                    <div class="avatar" style="background: white;">👤</div>
                 </div>
             </header>
 
@@ -158,11 +157,9 @@
                 <h2>Invitados 💌</h2>
             </header>
             <div class="container-padding">
-                <div class="row" style="margin-bottom: 20px;">
-                    <input type="text" id="new-guest-name" placeholder="Nombre del invitado" class="input-primary"
-                        style="flex:1; padding:12px; border-radius:12px; border:1px solid #ddd;">
-                    <button onclick="addGuest()" class="btn-primary"
-                        style="width:auto; border-radius:12px; padding:12px;">+</button>
+                <div class="add-item-row">
+                    <input type="text" id="new-guest-name" placeholder="Nombre del invitado">
+                    <button onclick="addGuest()" class="btn-primary btn-add">+</button>
                 </div>
 
                 <div id="guests-list" class="guests-list"></div>
@@ -176,11 +173,9 @@
                 <h2>Notas 📝</h2>
             </header>
             <div class="container-padding">
-                <div class="row" style="margin-bottom: 20px;">
-                    <input type="text" id="new-note-text" placeholder="Nueva tarea..." class="input-primary"
-                        style="flex:1; padding:12px; border-radius:12px; border:1px solid #ddd;">
-                    <button onclick="addNote()" class="btn-primary"
-                        style="width:auto; border-radius:12px; padding:12px;">+</button>
+                <div class="add-item-row">
+                    <input type="text" id="new-note-text" placeholder="Nueva tarea...">
+                    <button onclick="addNote()" class="btn-primary btn-add">+</button>
                 </div>
 
                 <h3 style="margin-bottom:10px; color:var(--text-muted); font-size:0.9rem;">Cosas por hacer</h3>

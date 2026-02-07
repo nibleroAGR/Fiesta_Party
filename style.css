@@ -1065,3 +1065,76 @@ button:active {
         height: 60px;
     }
 }
+
+#family-view {
+    background: linear-gradient(180deg, #f3e8ff 0%, #ffffff 50%);
+    background-attachment: fixed;
+}
+
+.family-main-logo {
+    width: 90%;
+    max-width: 320px;
+    height: auto;
+    margin-top: 10px;
+    margin-bottom: 5px;
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.05));
+}
+
+@media (min-width: 768px) {
+    .family-main-logo {
+        max-width: 450px;
+        margin-top: 20px;
+    }
+}
+
+
+#invitations-view {
+    background-color: #f0f9ff;
+}
+
+#invitations-view .section-title-header {
+    background-color: #f0f9ff;
+}
+
+#notes-view {
+    background-color: #fffbeb;
+}
+
+#notes-view .section-title-header {
+    background-color: #fffbeb;
+}
+
+.add-item-row {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    margin-bottom: 30px;
+}
+
+.add-item-row input {
+    flex: 1;
+    padding: 16px 20px;
+    border-radius: var(--radius-m);
+    border: 1px solid var(--border-light);
+    font-size: 1.1rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    outline: none;
+    transition: all 0.2s;
+    background: white;
+}
+
+.add-item-row input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(255, 0, 128, 0.1);
+}
+
+.add-item-row .btn-add {
+    width: 60px;
+    border-radius: var(--radius-m);
+    padding: 16px;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
