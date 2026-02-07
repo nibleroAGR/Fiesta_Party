@@ -38,24 +38,33 @@ body {
 
 #app {
     width: 100%;
-    max-width: 480px;
+    max-width: 1200px;
     margin: 0 auto;
     min-height: 100vh;
     background: white;
     display: flex;
     flex-direction: column;
     position: relative;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.05);
 }
 
 /* LANDING / HERO AREA */
 .hero-header {
     background: var(--bg-header);
-    padding: 10px 20px 65px 20px;
+    padding: 20px 20px 80px 20px;
     text-align: center;
     position: relative;
     border-radius: 0 0 30px 30px;
+    transition: padding 0.3s ease;
 }
+
+@media (min-width: 768px) {
+    .hero-header {
+        padding: 60px 40px 120px 40px;
+        border-radius: 0 0 50px 50px;
+    }
+}
+
 
 .top-auth-links {
     position: absolute;
@@ -73,7 +82,9 @@ body {
 }
 
 .hero-logo {
-    width: 405px;
+    width: 100%;
+    max-width: 405px;
+    height: auto;
     margin-top: 5px;
     margin-bottom: 5px;
     display: inline-block;
@@ -113,6 +124,22 @@ body {
     padding: 0 20px;
     margin-top: -60px;
     z-index: 10;
+}
+
+.card {
+    background: white;
+    border-radius: var(--radius-l);
+    padding: 24px;
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    margin-bottom: 24px;
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    .card {
+        padding: 40px;
+    }
 }
 
 .search-card {
@@ -467,10 +494,22 @@ button:active {
 }
 
 .venues-grid {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr;
     gap: 20px;
     padding-bottom: 80px;
+}
+
+@media (min-width: 768px) {
+    .venues-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .venues-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
 
 .venue-card {
@@ -567,12 +606,14 @@ button:active {
 /* BUSINESS DASHBOARD */
 .stats-row {
     display: flex;
+    flex-wrap: wrap;
     gap: 12px;
     margin-bottom: 30px;
 }
 
 .stat-card {
     flex: 1;
+    min-width: 140px;
     background: white;
     padding: 20px;
     border-radius: var(--radius-m);
@@ -619,14 +660,15 @@ button:active {
 .bottom-nav {
     position: fixed;
     bottom: 0;
-    left: 0;
+    left: 50%;
+    transform: translateX(-50%);
     width: 100%;
+    max-width: 1200px;
     background: white;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
     display: flex;
     justify-content: space-around;
     padding: 15px 0 25px 0;
-    /* Extra padding for phone bottom safe area */
     z-index: 1000;
     border-top: 1px solid var(--border-light);
 }
@@ -740,6 +782,19 @@ button:active {
     margin-bottom: 20px;
 }
 
+@media (min-width: 768px) {
+    .gallery-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+    }
+}
+
+@media (min-width: 1024px) {
+    .gallery-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
 .gallery-item {
     aspect-ratio: 1;
     background: #f0f0f0;
@@ -790,11 +845,22 @@ button:active {
 }
 
 .detail-hero {
-    height: 300px;
+    height: 40vh;
+    min-height: 250px;
+    max-height: 500px;
     background: #ddd;
     background-size: cover;
     background-position: center;
+    transition: height 0.3s ease;
 }
+
+@media (min-width: 1024px) {
+    .detail-hero {
+        height: 50vh;
+        max-height: 600px;
+    }
+}
+
 
 .detail-content {
     padding: 24px;
@@ -815,7 +881,6 @@ button:active {
 }
 
 .booking-dock {
-    /* Integrated static position */
     background: white;
     padding: 20px;
     box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.05);
@@ -823,10 +888,10 @@ button:active {
     justify-content: space-between;
     align-items: center;
     border-top: 1px solid var(--border-light);
-    max-width: 440px;
-    margin: 30px auto 0 auto;
-    border-radius: 0 0 20px 20px;
-    /* Optional: round bottom if needed, or keep generic */
+    width: 100%;
+    max-width: 800px;
+    margin: 30px auto 30px auto;
+    border-radius: 20px;
 }
 
 .total-price small {
@@ -902,6 +967,7 @@ button:active {
 
 .form-row {
     display: flex;
+    flex-wrap: wrap;
     gap: 15px;
 }
 
@@ -921,4 +987,35 @@ button:active {
     width: 20px;
     height: 20px;
     accent-color: var(--primary);
+}
+
+.container-padding {
+    padding: 0 20px;
+}
+
+@media (min-width: 768px) {
+    .container-padding {
+        padding: 0 40px;
+    }
+}
+
+.app-header-responsive {
+    padding: 20px;
+}
+
+@media (min-width: 768px) {
+    .app-header-responsive {
+        padding: 30px 40px;
+    }
+}
+
+.app-header-logo {
+    height: 45px;
+    width: auto;
+}
+
+@media (min-width: 768px) {
+    .app-header-logo {
+        height: 60px;
+    }
 }

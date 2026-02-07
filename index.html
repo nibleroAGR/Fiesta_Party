@@ -107,9 +107,9 @@
         <!-- APP: FAMILY DASHBOARD (EXPLORE) -->
         <section id="family-view" class="view hidden">
             <!-- Header matching landing, but with user profile -->
-            <header class="hero-header" style="padding: 20px 20px 10px 20px; background: white; margin-bottom: 20px;">
+            <header class="app-header-responsive" style="background: white; margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <img src="fiesta_logo.png" style="height: 40px;" alt="Fiesta Party Logo">
+                    <img src="fiesta_logo.png" class="app-header-logo" alt="Fiesta Party Logo">
                     <div class="user-pill" onclick="logout()" style="cursor: pointer; background: #fdf2f8;">
                         <div style="text-align: right; line-height: 1.2;">
                             <span id="user-name-display"
@@ -148,7 +148,7 @@
                     <div class="avatar">👤</div>
                 </div>
             </header>
-            <div id="active-reservation-container" style="padding: 0 20px;">
+            <div id="active-reservation-container" class="container-padding">
                 <p style="text-align:center; color:#999; margin-top:50px;">Cargando reservas...</p>
             </div>
             <div style="height: 80px;"></div>
@@ -162,7 +162,7 @@
                     <div class="avatar">👤</div>
                 </div>
             </header>
-            <div style="padding: 0 20px;">
+            <div class="container-padding">
                 <div class="row" style="margin-bottom: 20px;">
                     <input type="text" id="new-guest-name" placeholder="Nombre del invitado" class="input-primary"
                         style="flex:1; padding:12px; border-radius:12px; border:1px solid #ddd;">
@@ -183,7 +183,7 @@
                     <div class="avatar">👤</div>
                 </div>
             </header>
-            <div style="padding: 0 20px;">
+            <div class="container-padding">
                 <div class="row" style="margin-bottom: 20px;">
                     <input type="text" id="new-note-text" placeholder="Nueva tarea..." class="input-primary"
                         style="flex:1; padding:12px; border-radius:12px; border:1px solid #ddd;">
