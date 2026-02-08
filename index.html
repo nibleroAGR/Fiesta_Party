@@ -650,6 +650,30 @@
             <p style="margin-top: 20px; font-size: 0.75rem; color: #a0aec0;">&copy; 2026 Fiesta Party</p>
         </footer>
 
+        <!-- CHAT MODAL -->
+        <div id="chat-modal" class="modal hidden">
+            <div class="modal-content chat-modal-content">
+                <div class="chat-header">
+                    <button onclick="closeChat()" class="back-btn" style="position: static; margin-right: 10px;"><i
+                            class="ph ph-arrow-left"></i></button>
+                    <div style="flex: 1;">
+                        <h3 id="chat-venue-name" style="margin: 0; font-size: 1.1rem;">Chat</h3>
+                        <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted);">Conversación con el local
+                        </p>
+                    </div>
+                </div>
+                <div id="chat-messages" class="chat-messages">
+                    <!-- Messages will be loaded here -->
+                </div>
+                <div class="chat-input-container">
+                    <input type="text" id="chat-input" placeholder="Escribe un mensaje..."
+                        onkeypress="if(event.key==='Enter') sendChatMessage()">
+                    <button onclick="sendChatMessage()" class="btn-send-chat"><i
+                            class="ph ph-paper-plane-tilt"></i></button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- Firebase SDKs -->

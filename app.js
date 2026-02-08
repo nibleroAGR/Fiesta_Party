@@ -180,6 +180,7 @@ window.switchBusinessTab = (viewId, el) => {
     // Load data if needed for business views
     if (viewId === 'business-view') loadBusinessProfile();
     if (viewId === 'business-reservations-view') loadBusinessReservations();
+    if (viewId === 'business-notifications-view') loadBusinessNotifications();
     if (viewId === 'business-history-view') loadBusinessHistory();
     if (viewId === 'business-stats-view') loadBusinessStats();
     if (viewId === 'business-billing-view') loadBusinessBilling();
@@ -209,6 +210,8 @@ auth.onAuthStateChanged(async (user) => {
                 const initialTab = document.querySelectorAll('#business-nav .nav-item')[3]; // Last item is gear
                 switchBusinessTab('business-view', initialTab);
                 loadBusinessProfile();
+                // Update notification badge on login
+                setTimeout(() => updateNotificationBadge(), 1000);
             } else {
                 // Fallback / Error
                 alert("Rol no definido");
@@ -985,7 +988,22 @@ async function loadActiveReservation() {
         </div>
     `;
 
-    container.innerHTML = summaryHTML + venueHTML;
+    // Action Buttons (show for pending and confirmed reservations)
+    let actionButtonsHTML = '';
+    if (r.status === 'confirmed' || r.status === 'pending') {
+        actionButtonsHTML = `
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button onclick="requestCancellation('${r.venueId}', '${r.date}', '${r.time}', '${r.venueName}')" class="btn-secondary" style="flex: 1; background: #fef2f2; color: #ef4444; border-color: #fecaca;">
+                    <i class="ph ph-x-circle"></i> Solicitud de cancelación
+                </button>
+                <button onclick="openChat('${r.venueId}', '${r.venueName}')" class="btn-primary" style="flex: 1;">
+                    <i class="ph ph-chat-circle-dots"></i> Chat con local
+                </button>
+            </div>
+        `;
+    }
+
+    container.innerHTML = summaryHTML + actionButtonsHTML + venueHTML;
 }
 
 // --- Family Logic ---
@@ -1752,3 +1770,346 @@ window.exportBillingToPDF = async (resId) => {
 
     html2pdf().set(opt).from(temp).save();
 };
+
+// --- CHAT AND NOTIFICATION SYSTEM ---
+
+// Global chat state
+let currentChatVenueId = null;
+let currentChatVenueName = null;
+let chatUnsubscribe = null;
+
+// Request Cancellation
+window.requestCancellation = async (venueId, date, time, venueName) => {
+    if (!confirm('¿Estás seguro de que quieres solicitar la cancelación de esta reserva?')) return;
+
+    try {
+        const userDoc = await db.collection('users').doc(currentUser.uid).get();
+        const userName = userDoc.data().name || 'Usuario';
+
+        // Create notification for business
+        await db.collection('notifications').add({
+            type: 'cancellation_request',
+            venueId: venueId,
+            userId: currentUser.uid,
+            userName: userName,
+            venueName: venueName,
+            reservationDate: date,
+            reservationTime: time,
+            message: `${userName} solicita cancelar la reserva del ${date} a las ${time}`,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            read: false
+        });
+
+        alert('Solicitud de cancelación enviada al local. Te contactarán pronto.');
+    } catch (err) {
+        console.error('Error sending cancellation request:', err);
+        alert('Error al enviar la solicitud. Inténtalo de nuevo.');
+    }
+};
+
+// Open Chat
+window.openChat = async (venueId, venueName) => {
+    currentChatVenueId = venueId;
+    currentChatVenueName = venueName;
+
+    document.getElementById('chat-venue-name').innerText = venueName;
+    document.getElementById('chat-modal').classList.remove('hidden');
+
+    // Load existing messages
+    loadChatMessages();
+
+    // Create chat request notification for business if this is first message
+    const chatId = getChatId(currentUser.uid, venueId);
+    const chatDoc = await db.collection('chats').doc(chatId).get();
+
+    if (!chatDoc.exists) {
+        // First time opening chat - send notification to business
+        const userDoc = await db.collection('users').doc(currentUser.uid).get();
+        const userName = userDoc.data().name || 'Usuario';
+
+        await db.collection('notifications').add({
+            type: 'chat_request',
+            venueId: venueId,
+            userId: currentUser.uid,
+            userName: userName,
+            venueName: venueName,
+            message: `${userName} quiere iniciar un chat contigo`,
+            chatId: chatId,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            read: false
+        });
+
+        // Initialize chat document
+        await db.collection('chats').doc(chatId).set({
+            participants: [currentUser.uid, venueId],
+            familyId: currentUser.uid,
+            venueId: venueId,
+            venueName: venueName,
+            lastMessage: '',
+            lastMessageTime: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    }
+};
+
+// Close Chat
+window.closeChat = () => {
+    document.getElementById('chat-modal').classList.add('hidden');
+    if (chatUnsubscribe) {
+        chatUnsubscribe();
+        chatUnsubscribe = null;
+    }
+    currentChatVenueId = null;
+    currentChatVenueName = null;
+};
+
+// Get Chat ID (consistent between users)
+function getChatId(userId1, userId2) {
+    return [userId1, userId2].sort().join('_');
+}
+
+// Load Chat Messages
+function loadChatMessages() {
+    const chatId = getChatId(currentUser.uid, currentChatVenueId);
+    const messagesContainer = document.getElementById('chat-messages');
+
+    // Real-time listener
+    chatUnsubscribe = db.collection('chats').doc(chatId).collection('messages')
+        .orderBy('timestamp', 'asc')
+        .onSnapshot((snapshot) => {
+            messagesContainer.innerHTML = '';
+
+            snapshot.forEach(doc => {
+                const msg = doc.data();
+                renderChatMessage(msg);
+            });
+
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        });
+}
+
+// Render Chat Message
+function renderChatMessage(msg) {
+    const messagesContainer = document.getElementById('chat-messages');
+    const isSent = msg.senderId === currentUser.uid;
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chat-message ${isSent ? 'sent' : 'received'}`;
+
+    const time = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit'
+    }) : '';
+
+    messageDiv.innerHTML = `
+        ${msg.text}
+        <span class="chat-message-time">${time}</span>
+    `;
+
+    messagesContainer.appendChild(messageDiv);
+}
+
+// Send Chat Message
+window.sendChatMessage = async () => {
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+
+    if (!text || !currentChatVenueId) return;
+
+    try {
+        const chatId = getChatId(currentUser.uid, currentChatVenueId);
+
+        await db.collection('chats').doc(chatId).collection('messages').add({
+            senderId: currentUser.uid,
+            text: text,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Update last message in chat document
+        await db.collection('chats').doc(chatId).update({
+            lastMessage: text,
+            lastMessageTime: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        input.value = '';
+    } catch (err) {
+        console.error('Error sending message:', err);
+        alert('Error al enviar el mensaje');
+    }
+};
+
+// --- BUSINESS NOTIFICATIONS ---
+
+async function loadBusinessNotifications() {
+    console.log('loadBusinessNotifications called', { currentUser, userRole });
+
+    if (!currentUser || userRole !== 'business') return;
+
+    const container = document.getElementById('business-notifications-list');
+    if (!container) {
+        console.error('Notifications container not found');
+        return;
+    }
+
+    container.innerHTML = '<p style="text-align:center; color:#999; margin-top:30px;">Cargando notificaciones...</p>';
+
+    try {
+        // Simplified query without orderBy to avoid composite index requirement
+        const snapshot = await db.collection('notifications')
+            .where('venueId', '==', currentUser.uid)
+            .get();
+
+        console.log('Notifications query result:', snapshot.size, 'notifications found');
+
+        if (snapshot.empty) {
+            container.innerHTML = '<p style="text-align:center; color:#999; margin-top:50px;">No tienes notificaciones nuevas.</p>';
+            return;
+        }
+
+        // Sort notifications client-side
+        const notifications = [];
+        snapshot.forEach(doc => {
+            notifications.push({ id: doc.id, ...doc.data() });
+        });
+
+        // Sort by timestamp descending
+        notifications.sort((a, b) => {
+            const aTime = a.timestamp?.seconds || 0;
+            const bTime = b.timestamp?.seconds || 0;
+            return bTime - aTime;
+        });
+
+        console.log('Sorted notifications:', notifications.length);
+
+        container.innerHTML = '';
+
+        // Limit to 50 most recent
+        notifications.slice(0, 50).forEach(notif => {
+            renderNotification(notif.id, notif, container);
+        });
+
+        // Update notification badge count
+        updateNotificationBadge();
+    } catch (err) {
+        console.error('Error loading notifications:', err);
+        container.innerHTML = `<p style="text-align:center; color:red;">Error al cargar notificaciones: ${err.message}</p>`;
+    }
+}
+
+function renderNotification(notifId, notif, container) {
+    const notifDiv = document.createElement('div');
+    notifDiv.className = `notification-item ${notif.type === 'cancellation_request' ? 'cancellation-request' : 'chat-request'}`;
+
+    const time = notif.timestamp ? new Date(notif.timestamp.seconds * 1000).toLocaleString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    }) : '';
+
+    let actionsHTML = '';
+    if (notif.type === 'chat_request') {
+        actionsHTML = `
+            <div class="notification-actions">
+                <button onclick="openBusinessChat('${notif.chatId}', '${notif.userName}')" class="btn-notification-action btn-notification-primary">
+                    <i class="ph ph-chat-circle-dots"></i> Abrir Chat
+                </button>
+            </div>
+        `;
+    }
+
+    notifDiv.innerHTML = `
+        <div class="notification-content">
+            <div class="notification-title">
+                ${notif.type === 'cancellation_request' ? '🚫 Solicitud de Cancelación' : '💬 Nueva Solicitud de Chat'}
+            </div>
+            <div class="notification-text">${notif.message}</div>
+            ${notif.reservationDate ? `<div class="notification-text"><strong>Fecha:</strong> ${notif.reservationDate} ${notif.reservationTime || ''}</div>` : ''}
+            <div class="notification-time">${time}</div>
+            ${actionsHTML}
+        </div>
+        <button onclick="deleteNotification('${notifId}')" class="btn-delete-notification">
+            <i class="ph ph-x"></i>
+        </button>
+    `;
+
+    container.appendChild(notifDiv);
+}
+
+// Delete Notification
+window.deleteNotification = async (notifId) => {
+    try {
+        await db.collection('notifications').doc(notifId).delete();
+        loadBusinessNotifications();
+    } catch (err) {
+        console.error('Error deleting notification:', err);
+    }
+};
+
+// Open Business Chat (from notification)
+window.openBusinessChat = async (chatId, userName) => {
+    // Extract the family user ID from chatId
+    const parts = chatId.split('_');
+    const familyId = parts[0] === currentUser.uid ? parts[1] : parts[0];
+
+    currentChatVenueId = familyId;
+    currentChatVenueName = userName;
+
+    document.getElementById('chat-venue-name').innerText = `Chat con ${userName}`;
+    document.getElementById('chat-modal').classList.remove('hidden');
+
+    // Load messages using the chatId directly
+    loadBusinessChatMessages(chatId);
+};
+
+// Load Business Chat Messages
+function loadBusinessChatMessages(chatId) {
+    const messagesContainer = document.getElementById('chat-messages');
+
+    chatUnsubscribe = db.collection('chats').doc(chatId).collection('messages')
+        .orderBy('timestamp', 'asc')
+        .onSnapshot((snapshot) => {
+            messagesContainer.innerHTML = '';
+
+            snapshot.forEach(doc => {
+                const msg = doc.data();
+                renderChatMessage(msg);
+            });
+
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        });
+}
+
+// Update notification badge
+function updateNotificationBadge() {
+    if (!currentUser || userRole !== 'business') return;
+
+    db.collection('notifications')
+        .where('venueId', '==', currentUser.uid)
+        .where('read', '==', false)
+        .get()
+        .then(snapshot => {
+            const count = snapshot.size;
+            const navItem = document.querySelector('#business-nav .nav-item:nth-child(2)'); // Notifications icon
+
+            // Remove existing badge
+            const existingBadge = navItem?.querySelector('.notification-badge');
+            if (existingBadge) existingBadge.remove();
+
+            // Add new badge if count > 0
+            if (count > 0 && navItem) {
+                const badge = document.createElement('span');
+                badge.className = 'notification-badge';
+                badge.innerText = count > 9 ? '9+' : count;
+                navItem.style.position = 'relative';
+                navItem.appendChild(badge);
+            }
+        });
+}
+
+// Periodically check for new notifications (every 30 seconds)
+setInterval(() => {
+    if (currentUser && userRole === 'business') {
+        updateNotificationBadge();
+    }
+}, 30000);
