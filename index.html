@@ -192,6 +192,47 @@
             <div style="height: 80px;"></div>
         </section>
 
+        <!-- APP: FAMILY PROFILE VIEW -->
+        <section id="family-profile-view" class="view hidden">
+            <header class="section-title-header">
+                <h2>Mi Perfil 👤</h2>
+            </header>
+            <div class="container-padding">
+                <div class="card">
+                    <form id="family-profile-form" onsubmit="event.preventDefault()">
+                        <div class="form-section">
+                            <h3><i class="ph ph-user-circle"></i> Mi Información</h3>
+                            <div class="input-group">
+                                <label><i class="ph ph-user"></i> Nombre Completo</label>
+                                <input type="text" id="user-name" placeholder="Tu nombre">
+                            </div>
+                            <div class="input-group">
+                                <label><i class="ph ph-envelope-simple"></i> Email de contacto</label>
+                                <input type="email" id="user-contact-email" placeholder="ejemplo@correo.com">
+                            </div>
+                            <div class="input-group">
+                                <label><i class="ph ph-phone"></i> Teléfono</label>
+                                <input type="tel" id="user-phone" placeholder="600 000 000">
+                            </div>
+                        </div>
+                        <p style="font-size: 0.8rem; color: #666; margin-bottom: 5px;">
+                            * Los cambios se guardan automáticamente.
+                        </p>
+                    </form>
+                </div>
+
+                <div style="margin-top: 20px; text-align: center;">
+                    <button onclick="logout()" class="btn-secondary"
+                        style="width: 100%; background: #fef2f2; color: #ef4444; border-color: #fecaca; margin-bottom: 15px;">
+                        <i class="ph ph-sign-out"></i> Cerrar Sesión
+                    </button>
+                    <p style="font-size: 0.75rem; color: #a0aec0;">ID de usuario: <span id="user-id-display"
+                            style="font-family: monospace;"></span></p>
+                </div>
+            </div>
+            <div style="height: 80px;"></div>
+        </section>
+
         <!-- FAMILY BOTTOM NAV -->
         <nav id="family-nav" class="bottom-nav hidden">
             <div class="nav-item active" onclick="switchFamilyTab('family-view', this)">
@@ -205,6 +246,9 @@
             </div>
             <div class="nav-item" onclick="switchFamilyTab('notes-view', this)">
                 <i class="ph ph-notebook"></i>
+            </div>
+            <div class="nav-item" onclick="switchFamilyTab('family-profile-view', this)">
+                <i class="ph ph-gear"></i>
             </div>
         </nav>
 
@@ -250,14 +294,101 @@
             <div style="height: 80px;"></div>
         </section>
 
+        <!-- APP: BUSINESS HISTORY -->
+        <section id="business-history-view" class="view hidden">
+            <header class="section-title-header">
+                <button onclick="switchBusinessTab('business-billing-view')" class="back-btn"
+                    style="position:absolute; left:20px; top:25px; background:none; border:none; font-size:1.5rem;"><i
+                        class="ph ph-arrow-left"></i></button>
+                <h2>Historial ⏳</h2>
+            </header>
+            <div class="container-padding">
+                <div id="business-history-list">
+                    <p style="text-align:center; color:#999; margin-top:50px;">Cargando historial...</p>
+                </div>
+            </div>
+            <div style="height: 80px;"></div>
+        </section>
+
         <!-- APP: BUSINESS BILLING -->
         <section id="business-billing-view" class="view hidden">
             <header class="section-title-header">
                 <h2>Facturación 🧾</h2>
             </header>
             <div class="container-padding">
-                <div id="business-billing-info">
-                    <p style="text-align:center; color:#999; margin-top:50px;">Resumen de facturación y pagos.</p>
+                <div id="business-billing-list">
+                    <p style="text-align:center; color:#999; margin-top:50px;">Cargando facturación...</p>
+                </div>
+
+                <div style="margin-top: 30px; display: flex; flex-direction: column; gap: 15px;">
+                    <button onclick="switchBusinessTab('business-billing-history-view')" class="btn-primary"
+                        style="background: var(--secondary);">
+                        <i class="ph ph-files"></i> Historial de Facturación
+                    </button>
+
+                    <button onclick="switchBusinessTab('business-history-view')" class="btn-secondary">
+                        <i class="ph ph-clock-counter-clockwise"></i> Historial de Reservas
+                    </button>
+
+                    <p style="text-align: center; font-size: 0.8rem; color: var(--text-muted);">
+                        * Las reservas se conservan en el historial durante 60 días.
+                    </p>
+                </div>
+            </div>
+            <div style="height: 80px;"></div>
+        </section>
+
+        <!-- APP: BUSINESS BILLING HISTORY -->
+        <section id="business-billing-history-view" class="view hidden">
+            <header class="section-title-header">
+                <button onclick="switchBusinessTab('business-billing-view')" class="back-btn"
+                    style="position:absolute; left:20px; top:25px; background:none; border:none; font-size:1.5rem;"><i
+                        class="ph ph-arrow-left"></i></button>
+                <h2>Historial Facturas 📂</h2>
+            </header>
+            <div class="container-padding">
+                <!-- Filters -->
+                <div class="card" style="margin-bottom: 20px; padding: 15px;">
+                    <h4 style="margin-bottom: 10px; font-size: 0.9rem;"><i class="ph ph-funnel"></i> Filtros</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <div>
+                            <label style="font-size: 0.7rem; font-weight: 700;">Desde</label>
+                            <input type="date" id="filter-billing-start"
+                                style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.7rem; font-weight: 700;">Hasta</label>
+                            <input type="date" id="filter-billing-end"
+                                style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px;">
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="font-size: 0.7rem; font-weight: 700;">Total Mínimo (€)</label>
+                        <input type="number" id="filter-billing-min" placeholder="0"
+                            style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px;">
+                    </div>
+                    <button onclick="loadBusinessBillingHistory()" class="btn-primary"
+                        style="width:100%; padding: 10px;">Aplicar Filtros</button>
+                </div>
+
+                <div id="billing-history-results">
+                    <!-- History results -->
+                </div>
+            </div>
+            <div style="height: 80px;"></div>
+        </section>
+
+        <!-- APP: BUSINESS STATS -->
+        <section id="business-stats-view" class="view hidden">
+            <header class="section-title-header" style="background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);">
+                <button onclick="switchBusinessTab('business-view')" class="back-btn"
+                    style="position:absolute; left:20px; top:25px; background:none; border:none; font-size:1.5rem;"><i
+                        class="ph ph-arrow-left"></i></button>
+                <h2 style="padding: 20px 0; text-align: center;">Estadísticas 📊</h2>
+            </header>
+            <div class="container-padding">
+                <div id="stats-content">
+                    <p style="text-align:center; color:#999; margin-top:50px;">Cargando estadísticas...</p>
                 </div>
             </div>
             <div style="height: 80px;"></div>
@@ -280,14 +411,23 @@
             </header>
 
             <div class="stats-row">
-                <div class="stat-card">
+                <div class="stat-card" style="cursor: pointer; position: relative;"
+                    onclick="switchBusinessTab('business-stats-view')">
                     <span class="stat-num" id="stat-reservations">0</span>
                     <span class="stat-label">Reservas Totales</span>
+                    <i class="ph ph-chart-line-up"
+                        style="position: absolute; top: 10px; right: 10px; opacity: 0.3;"></i>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" style="cursor: pointer; position: relative;"
+                    onclick="switchBusinessTab('business-stats-view')">
                     <span class="stat-num" id="stat-visits">0</span>
                     <span class="stat-label">Visitas Perfil</span>
+                    <i class="ph ph-chart-bar" style="position: absolute; top: 10px; right: 10px; opacity: 0.3;"></i>
                 </div>
+            </div>
+            <div style="padding: 0 20px; margin-bottom: 20px;">
+                <button onclick="switchBusinessTab('business-stats-view')" class="btn-primary" style="width: 100%;"><i
+                        class="ph ph-chart-pie-slice"></i> Ver Estadísticas Detalladas</button>
             </div>
             <div class="card">
                 <h3>Gestionar Perfil</h3>
@@ -303,6 +443,16 @@
                         <div class="input-group">
                             <label>Descripción</label>
                             <textarea id="venue-desc" rows="3" placeholder="Describe tu local..."></textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="input-group">
+                                <label>Email de Reservas</label>
+                                <input type="email" id="venue-email" placeholder="contacto@local.com">
+                            </div>
+                            <div class="input-group">
+                                <label>Teléfono de Contacto</label>
+                                <input type="tel" id="venue-phone" placeholder="600 000 000">
+                            </div>
                         </div>
                     </div>
 
@@ -506,6 +656,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-firestore-compat.js"></script>
+    <!-- PDF Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="app.js"></script>
     <!-- Hidden clock for internal use -->
     <div id="hidden-system-clock" style="display:none;"></div>
