@@ -23,21 +23,30 @@ let intendedRole = null; // Role selected on landing
 // --- DOM Navigation ---
 function showView(viewId) {
     document.querySelectorAll('.view').forEach(el => el.classList.add('hidden'));
-    document.getElementById(viewId).classList.remove('hidden');
+    const targetElement = document.getElementById(viewId);
+    if (targetElement) {
+        targetElement.classList.remove('hidden');
+    }
 
     // Toggle Navbar visibility based on view
     const mainNav = document.getElementById('main-nav');
     const familyNav = document.getElementById('family-nav');
+    const businessNav = document.getElementById('business-nav');
+
+    // Hide all navs first
+    if (familyNav) familyNav.classList.add('hidden');
+    if (businessNav) businessNav.classList.add('hidden');
 
     if (viewId === 'landing-view') {
         if (mainNav) mainNav.style.display = 'flex';
-        if (familyNav) familyNav.classList.add('hidden');
     } else if (['family-view', 'reservation-view', 'invitations-view', 'notes-view'].includes(viewId)) {
-        if (mainNav) mainNav.style.display = 'none'; // Family users use bottom nav
+        if (mainNav) mainNav.style.display = 'none';
         if (familyNav) familyNav.classList.remove('hidden');
+    } else if (['business-view', 'business-reservations-view', 'business-notifications-view', 'business-billing-view'].includes(viewId)) {
+        if (mainNav) mainNav.style.display = 'none';
+        if (businessNav) businessNav.classList.remove('hidden');
     } else {
         if (mainNav) mainNav.style.display = 'none';
-        if (familyNav) familyNav.classList.add('hidden');
     }
 }
 
@@ -128,6 +137,7 @@ document.getElementById('auth-form').addEventListener('submit', async (e) => {
 
             // Save User Profile with Role
             await db.collection('users').doc(user.uid).set({
+                uid: user.uid,
                 email: email,
                 name: name,
                 role: intendedRole,
@@ -177,7 +187,10 @@ auth.onAuthStateChanged(async (user) => {
                 switchFamilyTab('family-view', initialTab);
                 loadVenues();
             } else if (userRole === 'business') {
-                showView('business-view');
+                document.getElementById('biz-name-display').innerText = data.name || "Empresa";
+                // Start at configuration (business-view) as it's the current main page
+                const initialTab = document.querySelectorAll('#business-nav .nav-item')[3]; // Last item is gear
+                switchBusinessTab('business-view', initialTab);
                 loadBusinessProfile();
             } else {
                 // Fallback / Error
@@ -246,6 +259,10 @@ async function loadBusinessProfile() {
 
         currentVenueGallery = data.gallery || [];
         renderGalleryPreview();
+
+        // Update Stats Display
+        document.getElementById('stat-reservations').innerText = data.totalReservations || 0;
+        document.getElementById('stat-visits').innerText = data.profileVisits || 0;
     }
 }
 
@@ -435,13 +452,107 @@ window.switchFamilyTab = (viewId, el) => {
     showView(viewId);
 
     // Update Nav Active State
-    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    document.querySelectorAll('#family-nav .nav-item').forEach(item => item.classList.remove('active'));
     if (el) el.classList.add('active');
 
     // Load data if needed
     if (viewId === 'invitations-view') loadGuests();
     if (viewId === 'notes-view') loadNotes();
     if (viewId === 'reservation-view') loadActiveReservation();
+};
+
+window.switchBusinessTab = (viewId, el) => {
+    showView(viewId);
+
+    // Update Nav Active State
+    document.querySelectorAll('#business-nav .nav-item').forEach(item => item.classList.remove('active'));
+    if (el) el.classList.add('active');
+
+    // Load data if needed for business views
+    if (viewId === 'business-view') loadBusinessProfile();
+    if (viewId === 'business-reservations-view') loadBusinessReservations();
+    // (Future) loadNotifications(), loadNotifications(), etc.
+};
+
+// Business Reservations Logic
+async function loadBusinessReservations() {
+    if (!currentUser) return;
+    const container = document.getElementById('business-reservations-list');
+    container.innerHTML = '<p style="text-align:center; color:#999; margin-top:30px;">Cargando reservas...</p>';
+
+    try {
+        const snapshot = await db.collection('reservations')
+            .where('venueId', '==', currentUser.uid)
+            .get();
+
+        if (snapshot.empty) {
+            container.innerHTML = '<p style="text-align:center; color:#999; margin-top:50px;">No tienes reservas aún.</p>';
+            return;
+        }
+
+        const reservations = [];
+        snapshot.forEach(doc => reservations.push({ id: doc.id, ...doc.data() }));
+        // Sort by timestamp desc
+        reservations.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+        container.innerHTML = '';
+        reservations.forEach(r => {
+            const statusLabel = r.status === 'confirmed' ? 'Confirmada' : (r.status === 'cancelled' ? 'Cancelada' : 'Pendiente');
+            const statusClass = r.status === 'confirmed' ? 'status-confirmed' : (r.status === 'cancelled' ? 'status-cancelled' : 'status-pending');
+
+            const card = document.createElement('div');
+            card.className = `reservation-card-biz ${statusClass}`;
+            card.innerHTML = `
+                <div class="reservation-summary-row" onclick="this.parentElement.classList.toggle('expanded')">
+                    <div style="flex:1;">
+                        <div style="font-weight:700; font-size:1.1rem;">${r.userName}</div>
+                        <div style="font-size:0.85rem; color:var(--text-muted);">${r.date} • ${r.time}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div class="status-badge">${statusLabel}</div>
+                        <div style="font-weight:700; margin-top:4px;">${r.totalPrice.toFixed(2)}€</div>
+                    </div>
+                </div>
+                <div class="reservation-detail-dropdown">
+                    <div style="padding-top:15px; border-top:1px solid #eee; margin-top:10px;">
+                        <p><strong>Email:</strong> ${r.userEmail || 'No disponible'}</p>
+                        <p><strong>Nº Niños:</strong> ${r.kids}</p>
+                        <p><strong>Servicios:</strong></p>
+                        <ul style="padding-left:20px; margin-bottom:15px; font-size:0.9rem;">
+                            ${(r.services || []).map(s => `<li>${s.name} (${s.price}€)</li>`).join('')}
+                        </ul>
+                        
+                        ${r.status === 'pending' ? `
+                            <div style="display:flex; gap:10px; margin-top:15px;">
+                                <button onclick="updateReservationStatus('${r.id}', 'confirmed')" class="btn-confirm-res">Confirmar Reserva</button>
+                                <button onclick="updateReservationStatus('${r.id}', 'cancelled')" class="btn-cancel-res">Cancelar</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    } catch (err) {
+        console.error("Error loading business reservations:", err);
+        container.innerHTML = '<p style="text-align:center; color:red;">Error al cargar las reservas.</p>';
+    }
+}
+
+window.updateReservationStatus = async (resId, newStatus) => {
+    const action = newStatus === 'confirmed' ? 'confirmar' : 'cancelar';
+    if (!confirm(`¿Estás seguro de que quieres ${action} esta reserva?`)) return;
+
+    try {
+        await db.collection('reservations').doc(resId).update({
+            status: newStatus
+        });
+        alert(`Reserva ${newStatus === 'confirmed' ? 'confirmada' : 'cancelada'} correctamente.`);
+        loadBusinessReservations();
+    } catch (err) {
+        console.error("Error updating reservation status:", err);
+        alert("Hubo un error al actualizar el estado.");
+    }
 };
 
 // Invitations
@@ -643,34 +754,51 @@ async function loadActiveReservation() {
     const vDoc = await db.collection('venues').doc(r.venueId).get();
     const v = vDoc.exists ? vDoc.data() : {};
 
-    // Create Summary HTML (Green Box)
+    // Status Styling Logic
+    let statusText = "Pendiente de confirmación";
+    let statusColor = "#f59e0b"; // Orange
+    let statusBg = "#fffbeb";
+    let statusIcon = "⏳";
+
+    if (r.status === 'confirmed') {
+        statusText = "Reserva confirmada por el local";
+        statusColor = "#10b981"; // Green
+        statusBg = "#f0fdf4";
+        statusIcon = "✅";
+    } else if (r.status === 'cancelled') {
+        statusText = "Reserva cancelada";
+        statusColor = "#ef4444"; // Red
+        statusBg = "#fef2f2";
+        statusIcon = "❌";
+    }
+
+    // Create Summary HTML
     const summaryHTML = `
-        <div class="card" style="background:#f0fdf4; border:1px solid #bbf7d0; margin-bottom:20px;">
-            <div class="row" style="margin-bottom:15px; border-bottom:1px solid rgba(0,0,0,0.05); padding-bottom:10px;">
-                <h2 style="color:#15803d; font-size:1.4rem; margin:0;">✅ Reserva Confirmada</h2>
-                <span style="background:#dcfce7; color:#15803d; padding:4px 12px; border-radius:20px; font-size:0.8rem; font-weight:bold;">${r.status.toUpperCase()}</span>
+        <div class="card" style="background:${statusBg}; border:1px solid ${statusColor}22; margin-bottom:20px;">
+            <div class="row" style="margin-bottom:15px; border-bottom:1px solid ${statusColor}11; padding-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                <h2 style="color:${statusColor}; font-size:1.1rem; margin:0;">${statusIcon} ${statusText}</h2>
             </div>
             
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
                 <div>
-                    <label style="font-size:0.75rem; color:#166534; font-weight:700;">LOCAL</label>
-                    <div style="font-size:1.1rem; font-weight:600; color:#14532d;">${r.venueName}</div>
+                    <label style="font-size:0.7rem; color:${statusColor}; font-weight:700; text-transform:uppercase;">LOCAL</label>
+                    <div style="font-size:1rem; font-weight:600; color:#1f2937;">${r.venueName}</div>
                 </div>
                 <div>
-                    <label style="font-size:0.75rem; color:#166534; font-weight:700;">TOTAL</label>
-                    <div style="font-size:1.2rem; font-weight:bold; color:#15803d;">${r.totalPrice}€</div>
+                    <label style="font-size:0.7rem; color:${statusColor}; font-weight:700; text-transform:uppercase;">TOTAL</label>
+                    <div style="font-size:1.1rem; font-weight:bold; color:${statusColor};">${r.totalPrice.toFixed(2)}€</div>
                 </div>
                 <div>
-                    <label style="font-size:0.75rem; color:#166534; font-weight:700;">FECHA</label>
-                    <div style="font-size:1rem; font-weight:600; color:#14532d;">${r.date}</div>
+                    <label style="font-size:0.7rem; color:${statusColor}; font-weight:700; text-transform:uppercase;">FECHA</label>
+                    <div style="font-size:0.9rem; font-weight:600; color:#4b5563;">${r.date}</div>
                 </div>
                 <div>
-                    <label style="font-size:0.75rem; color:#166534; font-weight:700;">HORA</label>
-                    <div style="font-size:1rem; font-weight:600; color:#14532d;">${r.time}</div>
+                    <label style="font-size:0.7rem; color:${statusColor}; font-weight:700; text-transform:uppercase;">HORA</label>
+                    <div style="font-size:0.9rem; font-weight:600; color:#4b5563;">${r.time}</div>
                 </div>
                 <div>
-                    <label style="font-size:0.75rem; color:#166534; font-weight:700;">NIÑOS</label>
-                    <div style="font-size:1rem; font-weight:600; color:#14532d;">${r.kids}</div>
+                    <label style="font-size:0.7rem; color:${statusColor}; font-weight:700; text-transform:uppercase;">NIÑOS</label>
+                    <div style="font-size:0.9rem; font-weight:600; color:#4b5563;">${r.kids}</div>
                 </div>
             </div>
         </div>
@@ -679,35 +807,20 @@ async function loadActiveReservation() {
     // Create Read-Only Venue Detail HTML (Simulating Guest View)
     const venueHTML = `
         <div class="venue-detail-container" style="pointer-events:none; opacity:0.9;">
-            <div class="venue-cover" style="background-image: url(${v.coverImage || ''}); height:200px; background-size:cover; border-radius:12px; margin-bottom:20px;"></div>
+            <div class="venue-cover" style="background-image: url(${v.coverImage || ''}); height:150px; background-size:cover; border-radius:12px; margin-bottom:15px;"></div>
             
-            <h2 style="margin-bottom:10px;">${v.name}</h2>
-            <p style="color:#666; margin-bottom:20px;">${v.description}</p>
+            <h3 style="margin-bottom:5px;">${v.name}</h3>
+            <p style="color:#6b7280; font-size:0.9rem; margin-bottom:15px;">${v.description ? v.description.substring(0, 100) + '...' : ''}</p>
             
-            <div class="info-grid">
-                <div class="info-item">
+            <div class="info-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:0.85rem;">
+                <div class="info-item" style="display:flex; align-items:center; gap:5px;">
                     <i class="ph ph-map-pin"></i>
-                    <span>${v.city}, ${v.address || ''}</span>
+                    <span>${v.city || ''}</span>
                 </div>
-                <div class="info-item">
+                <div class="info-item" style="display:flex; align-items:center; gap:5px;">
                     <i class="ph ph-users"></i>
-                    <span>Capacidad: ${v.capacity}</span>
+                    <span>Cap: ${v.capacity || '0'}</span>
                 </div>
-            </div>
-
-            <h3 style="margin-top:20px; margin-bottom:10px;">Servicios Incluidos</h3>
-            <div class="services-list">
-                ${(v.services || []).map(s => `
-                    <div class="service-tag">
-                        <span>${s.name}</span>
-                        <span style="font-weight:bold;">${s.price}€</span>
-                    </div>
-                `).join('')}
-            </div>
-            
-            <h3 style="margin-top:20px;">Galería</h3>
-            <div class="gallery-grid">
-                ${(v.gallery || []).map(img => `<div class="gallery-item" style="background-image:url(${img})"></div>`).join('')}
             </div>
         </div>
     `;
@@ -841,6 +954,11 @@ initAutocomplete();
 
 // Venue Detail Modal
 window.openVenueDetail = async (venueId) => {
+    // Increment Profile Visits (Atomic update)
+    db.collection('venues').doc(venueId).update({
+        profileVisits: firebase.firestore.FieldValue.increment(1)
+    }).catch(err => console.error("Error updating visits:", err));
+
     const doc = await db.collection('venues').doc(venueId).get();
     if (!doc.exists) return;
     const v = doc.data();
@@ -1071,7 +1189,8 @@ window.attemptBooking = async () => {
             venueId: window.currentVenueId,
             venueName: venueName,
             userId: currentUser.uid,
-            userName: document.getElementById('user-name-display').innerText,
+            userName: document.getElementById('user-name-display').innerText || "Usuario",
+            userEmail: currentUser.email,
             date: date,
             time: time,
             kids: kids,
@@ -1079,6 +1198,11 @@ window.attemptBooking = async () => {
             services: selectedServices,
             status: 'pending',
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Increment Venue Reservation Count (Atomic update)
+        await db.collection('venues').doc(window.currentVenueId).update({
+            totalReservations: firebase.firestore.FieldValue.increment(1)
         });
 
         alert(`¡Reserva Solicitada!\n\nLocal: ${venueName}\nFecha: ${date} a las ${time}\nTotal: ${totalStr}\n\nEl local confirmará tu solicitud pronto.`);
@@ -1108,3 +1232,18 @@ function stringToColor(str) {
     const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
     return '#' + "00000".substring(0, 6 - c.length) + c;
 }
+
+// --- Internal System Functions ---
+function updateInternalClock() {
+    const now = new Date();
+    const clockEl = document.getElementById('hidden-system-clock');
+    if (clockEl) {
+        // Format: YYYY-MM-DD HH:mm:ss
+        const timestamp = now.toISOString().replace('T', ' ').split('.')[0];
+        clockEl.innerText = timestamp;
+    }
+}
+
+// Update clock every second
+setInterval(updateInternalClock, 1000);
+updateInternalClock();

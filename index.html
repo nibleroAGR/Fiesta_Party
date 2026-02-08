@@ -208,30 +208,87 @@
             </div>
         </nav>
 
-        <!-- APP: BUSINESS DASHBOARD -->
+        <!-- BUSINESS BOTTOM NAV -->
+        <nav id="business-nav" class="bottom-nav hidden">
+            <div class="nav-item" onclick="switchBusinessTab('business-reservations-view', this)">
+                <i class="ph ph-calendar-check"></i>
+            </div>
+            <div class="nav-item" onclick="switchBusinessTab('business-notifications-view', this)">
+                <i class="ph ph-bell"></i>
+            </div>
+            <div class="nav-item" onclick="switchBusinessTab('business-billing-view', this)">
+                <i class="ph ph-receipt"></i>
+            </div>
+            <div class="nav-item active" onclick="switchBusinessTab('business-view', this)">
+                <i class="ph ph-gear"></i>
+            </div>
+        </nav>
+
+        <!-- APP: BUSINESS RESERVATIONS -->
+        <section id="business-reservations-view" class="view hidden">
+            <header class="section-title-header">
+                <h2>Reservas 📅</h2>
+            </header>
+            <div class="container-padding">
+                <div id="business-reservations-list">
+                    <p style="text-align:center; color:#999; margin-top:50px;">Próximamente: Listado de reservas.</p>
+                </div>
+            </div>
+            <div style="height: 80px;"></div>
+        </section>
+
+        <!-- APP: BUSINESS NOTIFICATIONS -->
+        <section id="business-notifications-view" class="view hidden">
+            <header class="section-title-header">
+                <h2>Notificaciones 🔔</h2>
+            </header>
+            <div class="container-padding">
+                <div id="business-notifications-list">
+                    <p style="text-align:center; color:#999; margin-top:50px;">No tienes notificaciones nuevas.</p>
+                </div>
+            </div>
+            <div style="height: 80px;"></div>
+        </section>
+
+        <!-- APP: BUSINESS BILLING -->
+        <section id="business-billing-view" class="view hidden">
+            <header class="section-title-header">
+                <h2>Facturación 🧾</h2>
+            </header>
+            <div class="container-padding">
+                <div id="business-billing-info">
+                    <p style="text-align:center; color:#999; margin-top:50px;">Resumen de facturación y pagos.</p>
+                </div>
+            </div>
+            <div style="height: 80px;"></div>
+        </section>
+
+        <!-- APP: BUSINESS DASHBOARD (CONFIGURACION / DASHBOARD) -->
         <section id="business-view" class="view hidden">
-            <header class="app-header business-header">
-                <h2>Mi Local 🏪</h2>
-                <div class="user-pill" onclick="logout()" style="cursor: pointer;">
+            <header class="app-header business-header"
+                style="background: transparent; margin-bottom: 20px; display: flex; flex-direction: column; align-items: flex-start; position: relative;">
+                <h1 class="colorful-logo" style="margin-left: 0; text-align: left;">Fiesta Party</h1>
+                <div class="user-pill" onclick="logout()"
+                    style="position: absolute; top: 15px; right: 20px; cursor: pointer; background: #fdf2f8; padding: 4px 4px 4px 12px; border-radius: 50px; display: flex; align-items: center; gap: 8px;">
                     <div style="text-align: right; line-height: 1.2;">
-                        <span id="biz-name-display">Empresa</span>
+                        <span id="biz-name-display"
+                            style="display:block; color: var(--primary); font-weight: 700;">Empresa</span>
                         <small style="font-size: 0.7rem; color: var(--secondary);">Salir</small>
                     </div>
-                    <div class="avatar">💼</div>
+                    <div class="avatar" style="background: white;">💼</div>
                 </div>
             </header>
 
             <div class="stats-row">
                 <div class="stat-card">
-                    <span class="stat-num">0</span>
-                    <span class="stat-label">Reservas Activas</span>
+                    <span class="stat-num" id="stat-reservations">0</span>
+                    <span class="stat-label">Reservas Totales</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-num">0</span>
+                    <span class="stat-num" id="stat-visits">0</span>
                     <span class="stat-label">Visitas Perfil</span>
                 </div>
             </div>
-
             <div class="card">
                 <h3>Gestionar Perfil</h3>
                 <form id="venue-form">
@@ -363,6 +420,7 @@
                     <button type="submit" class="btn-save">Guardar Cambios</button>
                 </form>
             </div>
+            <div style="height: 80px;"></div>
         </section>
 
         <!-- APP: VENUE DETAIL VIEW (FAMILY) -->
@@ -449,6 +507,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-firestore-compat.js"></script>
     <script src="app.js"></script>
+    <!-- Hidden clock for internal use -->
+    <div id="hidden-system-clock" style="display:none;"></div>
 </body>
 
 </html>

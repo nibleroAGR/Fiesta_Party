@@ -1123,6 +1123,26 @@ button:active {
     background: transparent;
 }
 
+#business-reservations-view {
+    background: linear-gradient(180deg, #ecfdf5 0%, #ffffff 50%);
+    background-attachment: fixed;
+}
+
+#business-notifications-view {
+    background: linear-gradient(180deg, #fef2f2 0%, #ffffff 50%);
+    background-attachment: fixed;
+}
+
+#business-billing-view {
+    background: linear-gradient(180deg, #eff6ff 0%, #ffffff 50%);
+    background-attachment: fixed;
+}
+
+#business-view {
+    background: linear-gradient(180deg, #faf5ff 0%, #ffffff 50%);
+    background-attachment: fixed;
+}
+
 .add-item-row {
     display: flex;
     gap: 12px;
@@ -1156,4 +1176,97 @@ button:active {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+}
+
+/* Business Reservation List Styles */
+.reservation-card-biz {
+    background: white;
+    border-radius: var(--radius-m);
+    border: 1px solid var(--border-light);
+    margin-bottom: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.reservation-summary-row {
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+
+.reservation-summary-row:hover {
+    background: #fdf2f8;
+}
+
+.reservation-detail-dropdown {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out, padding 0.3s ease;
+    padding: 0 20px;
+    background: #fdfdfd;
+}
+
+.reservation-card-biz.expanded .reservation-detail-dropdown {
+    max-height: 500px;
+    padding-bottom: 20px;
+}
+
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: inline-block;
+}
+
+/* Status variants */
+.status-pending .status-badge {
+    background: #fffbeb;
+    color: #f59e0b;
+}
+
+.status-confirmed .status-badge {
+    background: #f0fdf4;
+    color: #10b981;
+}
+
+.status-cancelled .status-badge {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+.status-pending {
+    border-left: 4px solid #f59e0b;
+}
+
+.status-confirmed {
+    border-left: 4px solid #10b981;
+}
+
+.status-cancelled {
+    border-left: 4px solid #ef4444;
+}
+
+.btn-confirm-res {
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    flex: 1;
+}
+
+.btn-cancel-res {
+    background: #fee2e2;
+    color: #ef4444;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
 }
