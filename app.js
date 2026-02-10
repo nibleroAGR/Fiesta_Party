@@ -209,41 +209,98 @@ document.getElementById('auth-form').addEventListener('submit', async (e) => {
 
 async function signInWithGoogle() {
     const provider = new firebase.auth.GoogleAuthProvider();
+    const googleBtn = document.querySelector('.google-btn');
+    const originalContent = googleBtn.innerHTML;
+
     try {
+        googleBtn.disabled = true;
+        googleBtn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Cargando...';
+
         const result = await auth.signInWithPopup(provider);
         const user = result.user;
 
         // Check if user already exists in Firestore
         const userDoc = await db.collection('users').doc(user.uid).get();
         if (!userDoc.exists) {
-            // New user, create profile with current intendedRole
+            // New user, create profile with current intendedRole (fallback to family)
+            const roleToAssign = intendedRole || 'family';
+
             await db.collection('users').doc(user.uid).set({
                 uid: user.uid,
                 email: user.email,
                 name: user.displayName || "Usuario Google",
-                role: intendedRole,
+                role: roleToAssign,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
 
             // If business, create empty venue profile
-            if (intendedRole === 'business') {
+            if (roleToAssign === 'business') {
                 await db.collection('venues').doc(user.uid).set({
                     ownerId: user.uid,
                     name: (user.displayName || "Local") + " Venue",
                     description: "",
                     price: 0,
-                    capacity: 0
+                    capacity: 0,
+                    city: "",
+                    address: ""
                 });
             }
-            console.log("Nuevo usuario Google registrado como:", intendedRole);
+            console.log("Nuevo usuario Google registrado como:", roleToAssign);
+            // After profile creation, manually trigger the redirect
+            await handleUserRedirect(user.uid);
         } else {
             console.log("Usuario Google ya existente:", userDoc.data().role);
+            // For existing users, redirect immediately
+            await handleUserRedirect(user.uid);
         }
     } catch (error) {
         console.error("Google Auth Error:", error);
-        showAlert("Error al acceder con Google: " + error.message);
+        if (error.code === 'auth/popup-blocked') {
+            showAlert("El navegador ha bloqueado la ventana emergente. Por favor, permítela e inténtalo de nuevo.");
+        } else if (location.protocol === 'file:') {
+            showAlert("Error: El acceso con Google NO funciona abriendo el archivo directamente (file://). Debes usar un servidor local o subirlo a un hosting.");
+        } else {
+            showAlert("Error al acceder con Google: " + error.message);
+        }
+    } finally {
+        googleBtn.disabled = false;
+        googleBtn.innerHTML = originalContent;
     }
 }
+
+// Reusable function to redirect user after login
+async function handleUserRedirect(uid) {
+    const doc = await db.collection('users').doc(uid).get();
+    if (!doc.exists) return; // Wait for document to exist
+
+    const data = doc.data();
+    userRole = data.role;
+
+    // Redirect based on role
+    if (userRole === 'family') {
+        const nameDisplay = document.getElementById('user-name-display');
+        if (nameDisplay) nameDisplay.innerText = data.name;
+
+        // Find the "Explora" tab to set active state
+        const initialTab = document.querySelector('#family-nav .nav-item');
+        switchFamilyTab('family-view', initialTab);
+        loadVenues();
+    } else if (userRole === 'business') {
+        const bizDisplay = document.getElementById('biz-name-display');
+        if (bizDisplay) bizDisplay.innerText = data.name || "Empresa";
+
+        // Gear icon is usually the 4th item in business nav
+        const bizTabs = document.querySelectorAll('#business-nav .nav-item');
+        const configTab = bizTabs[3] || bizTabs[0];
+
+        switchBusinessTab('business-view', configTab);
+        loadBusinessProfile();
+        setTimeout(() => updateNotificationBadge(), 1000);
+    } else {
+        showAlert("Rol no definido para este usuario");
+    }
+}
+
 
 
 // --- Business Navigation Helper ---
@@ -268,36 +325,8 @@ window.switchBusinessTab = (viewId, el) => {
 auth.onAuthStateChanged(async (user) => {
     if (user) {
         currentUser = user;
-        // Fetch Role
-        const doc = await db.collection('users').doc(user.uid).get();
-        if (doc.exists) {
-            const data = doc.data();
-            userRole = data.role;
-
-            // Redirect based on role
-            if (userRole === 'family') {
-                document.getElementById('user-name-display').innerText = data.name;
-                // Start at family-view ("Explora") by default
-                const initialTab = document.querySelector('.nav-item'); // First item is search/explore
-                switchFamilyTab('family-view', initialTab);
-                loadVenues();
-            } else if (userRole === 'business') {
-                document.getElementById('biz-name-display').innerText = data.name || "Empresa";
-                // Start at configuration (business-view) as it's the current main page
-                const initialTab = document.querySelectorAll('#business-nav .nav-item')[3]; // Last item is gear
-                switchBusinessTab('business-view', initialTab);
-                loadBusinessProfile();
-                // Update notification badge on login
-                setTimeout(() => updateNotificationBadge(), 1000);
-            } else {
-                // Fallback / Error
-                showAlert("Rol no definido");
-            }
-        } else {
-            // New user, data might not be ready if just signed up (race condition handled in register flow ideally) or manual login without data
-            // For now assume register flow handles set()
-            console.log("Esperando datos de usuario...");
-        }
+        // Delegate to helper function
+        await handleUserRedirect(user.uid);
     } else {
         currentUser = null;
         userRole = null;
@@ -305,6 +334,7 @@ auth.onAuthStateChanged(async (user) => {
         loadVenues(); // Load venues on landing for guests
     }
 });
+
 
 function logout() {
     auth.signOut();
