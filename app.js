@@ -71,6 +71,44 @@ window.setAuthMode = (registering) => {
     }
 };
 
+// --- Custom Professional Modals ---
+let customConfirmCallback = null;
+
+window.showAlert = (message) => {
+    const modal = document.getElementById('custom-alert-modal');
+    const msgEl = document.getElementById('custom-alert-message');
+    if (modal && msgEl) {
+        msgEl.innerText = message;
+        modal.classList.remove('hidden');
+    }
+};
+
+window.closeCustomAlert = () => {
+    const modal = document.getElementById('custom-alert-modal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.showConfirm = (message, callback) => {
+    const modal = document.getElementById('custom-confirm-modal');
+    const msgEl = document.getElementById('custom-confirm-message');
+    if (modal && msgEl) {
+        msgEl.innerText = message;
+        customConfirmCallback = callback;
+        modal.classList.remove('hidden');
+    }
+};
+
+window.closeCustomConfirm = (result) => {
+    const modal = document.getElementById('custom-confirm-modal');
+    if (modal) modal.classList.add('hidden');
+
+    if (result && typeof customConfirmCallback === 'function') {
+        customConfirmCallback();
+    }
+    customConfirmCallback = null;
+};
+
+
 // --- Auth Flow ---
 function showAuth(role) {
     intendedRole = role;
@@ -163,11 +201,50 @@ document.getElementById('auth-form').addEventListener('submit', async (e) => {
         }
     } catch (error) {
         console.error("Auth Error:", error);
-        alert(error.message);
+        showAlert(error.message);
         btn.disabled = false;
         btn.innerText = isRegistering ? "Crear Cuenta" : "Entrar";
     }
 });
+
+async function signInWithGoogle() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    try {
+        const result = await auth.signInWithPopup(provider);
+        const user = result.user;
+
+        // Check if user already exists in Firestore
+        const userDoc = await db.collection('users').doc(user.uid).get();
+        if (!userDoc.exists) {
+            // New user, create profile with current intendedRole
+            await db.collection('users').doc(user.uid).set({
+                uid: user.uid,
+                email: user.email,
+                name: user.displayName || "Usuario Google",
+                role: intendedRole,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            // If business, create empty venue profile
+            if (intendedRole === 'business') {
+                await db.collection('venues').doc(user.uid).set({
+                    ownerId: user.uid,
+                    name: (user.displayName || "Local") + " Venue",
+                    description: "",
+                    price: 0,
+                    capacity: 0
+                });
+            }
+            console.log("Nuevo usuario Google registrado como:", intendedRole);
+        } else {
+            console.log("Usuario Google ya existente:", userDoc.data().role);
+        }
+    } catch (error) {
+        console.error("Google Auth Error:", error);
+        showAlert("Error al acceder con Google: " + error.message);
+    }
+}
+
 
 // --- Business Navigation Helper ---
 window.switchBusinessTab = (viewId, el) => {
@@ -214,7 +291,7 @@ auth.onAuthStateChanged(async (user) => {
                 setTimeout(() => updateNotificationBadge(), 1000);
             } else {
                 // Fallback / Error
-                alert("Rol no definido");
+                showAlert("Rol no definido");
             }
         } else {
             // New user, data might not be ready if just signed up (race condition handled in register flow ideally) or manual login without data
@@ -686,18 +763,18 @@ async function loadBusinessHistory() {
 
 window.updateReservationStatus = async (resId, newStatus) => {
     const action = newStatus === 'confirmed' ? 'confirmar' : 'cancelar';
-    if (!confirm(`¿Estás seguro de que quieres ${action} esta reserva?`)) return;
-
-    try {
-        await db.collection('reservations').doc(resId).update({
-            status: newStatus
-        });
-        alert(`Reserva ${newStatus === 'confirmed' ? 'confirmada' : 'cancelada'} correctamente.`);
-        loadBusinessReservations();
-    } catch (err) {
-        console.error("Error updating reservation status:", err);
-        alert("Hubo un error al actualizar el estado.");
-    }
+    showConfirm(`¿Estás seguro de que quieres ${action} esta reserva?`, async () => {
+        try {
+            await db.collection('reservations').doc(resId).update({
+                status: newStatus
+            });
+            showAlert(`Reserva ${newStatus === 'confirmed' ? 'confirmada' : 'cancelada'} correctamente.`);
+            loadBusinessReservations();
+        } catch (err) {
+            console.error("Error updating reservation status:", err);
+            showAlert("Hubo un error al actualizar el estado.");
+        }
+    });
 };
 
 // Invitations
@@ -749,17 +826,17 @@ window.addGuest = async () => {
 };
 
 window.deleteGuest = async (index) => {
-    if (!confirm("¿Borrar invitado?")) return;
+    showConfirm("¿Borrar invitado?", async () => {
+        const docRef = db.collection('users').doc(currentUser.uid);
+        const doc = await docRef.get();
+        let guests = doc.data().guests || [];
 
-    const docRef = db.collection('users').doc(currentUser.uid);
-    const doc = await docRef.get();
-    let guests = doc.data().guests || [];
-
-    if (guests[index]) { // Check existence
-        guests.splice(index, 1);
-        await docRef.update({ guests });
-        loadGuests();
-    }
+        if (guests[index]) { // Check existence
+            guests.splice(index, 1);
+            await docRef.update({ guests });
+            loadGuests();
+        }
+    });
 };
 
 window.toggleGuest = async (index) => {
@@ -1292,7 +1369,7 @@ window.validateBookingDate = () => {
 
     // 1. Check Blocked Dates
     if (schedule.blockedDates && schedule.blockedDates.includes(selectedDate)) {
-        alert("Lo sentimos, esta fecha no está disponible.");
+        showAlert("Lo sentimos, esta fecha no está disponible.");
         dateInput.value = '';
         timeSelect.disabled = true;
         return;
@@ -1300,7 +1377,7 @@ window.validateBookingDate = () => {
 
     // 2. Check Open Days (If config exists)
     if (schedule.openDays && schedule.openDays.length > 0 && !schedule.openDays.includes(dayOfWeek)) {
-        alert("El local está cerrado este día de la semana.");
+        showAlert("El local está cerrado este día de la semana.");
         dateInput.value = '';
         timeSelect.disabled = true;
         return;
@@ -1340,15 +1417,27 @@ window.calcTotal = () => {
 };
 
 window.attemptBooking = async () => {
-    if (!currentUser) return alert("Debes iniciar sesión para reservar");
+    if (!currentUser) {
+        showAlert("Debes iniciar sesión para reservar");
+        return;
+    }
 
     const kids = parseInt(document.getElementById('booking-kids').value);
     const date = document.getElementById('booking-date').value;
     const time = document.getElementById('booking-time').value;
 
-    if (!kids || kids < 1) return alert("Indica un número válido de niños");
-    if (!date) return alert("Selecciona una fecha para la fiesta");
-    if (!time) return alert("Selecciona una hora de inicio");
+    if (!kids || kids < 1) {
+        showAlert("Indica un número válido de niños");
+        return;
+    }
+    if (!date) {
+        showAlert("Selecciona una fecha para la fiesta");
+        return;
+    }
+    if (!time) {
+        showAlert("Selecciona una hora de inicio");
+        return;
+    }
 
     const totalStr = document.getElementById('booking-total').innerText;
     const totalVal = parseFloat(totalStr.replace('€', ''));
@@ -1389,12 +1478,12 @@ window.attemptBooking = async () => {
         // Daily Stats
         incrementDailyStat(window.currentVenueId, 'reservations');
 
-        alert(`¡Reserva Solicitada!\n\nLocal: ${venueName}\nFecha: ${date} a las ${time}\nTotal: ${totalStr}\n\nEl local confirmará tu solicitud pronto.`);
+        showAlert(`¡Reserva Solicitada!\n\nLocal: ${venueName}\nFecha: ${date} a las ${time}\nTotal: ${totalStr}\n\nEl local confirmará tu solicitud pronto.`);
         showView('family-view');
 
     } catch (err) {
         console.error("Error booking:", err);
-        alert("Hubo un error al guardar la reserva");
+        showAlert("Hubo un error al guardar la reserva");
     }
 };
 
@@ -1652,13 +1741,14 @@ function createBillingCard(b) {
 }
 
 window.updateBillingStatus = async (resId, status) => {
-    if (!confirm(`¿Marcar este movimiento como "${status === 'completed' ? 'Efectuado' : 'Pendiente'}"?`)) return;
-    try {
-        await db.collection('reservations').doc(resId).update({ billingStatus: status });
-        loadBusinessBilling();
-    } catch (err) {
-        console.error("Error updating billing:", err);
-    }
+    showConfirm(`¿Marcar este movimiento como "${status === 'completed' ? 'Efectuado' : 'Pendiente'}"?`, async () => {
+        try {
+            await db.collection('reservations').doc(resId).update({ billingStatus: status });
+            loadBusinessBilling();
+        } catch (err) {
+            console.error("Error updating billing:", err);
+        }
+    });
 };
 
 window.loadBusinessBillingHistory = async () => {
@@ -1780,31 +1870,31 @@ let chatUnsubscribe = null;
 
 // Request Cancellation
 window.requestCancellation = async (venueId, date, time, venueName) => {
-    if (!confirm('¿Estás seguro de que quieres solicitar la cancelación de esta reserva?')) return;
+    showConfirm('¿Estás seguro de que quieres solicitar la cancelación de esta reserva?', async () => {
+        try {
+            const userDoc = await db.collection('users').doc(currentUser.uid).get();
+            const userName = userDoc.data().name || 'Usuario';
 
-    try {
-        const userDoc = await db.collection('users').doc(currentUser.uid).get();
-        const userName = userDoc.data().name || 'Usuario';
+            // Create notification for business
+            await db.collection('notifications').add({
+                type: 'cancellation_request',
+                venueId: venueId,
+                userId: currentUser.uid,
+                userName: userName,
+                venueName: venueName,
+                reservationDate: date,
+                reservationTime: time,
+                message: `${userName} solicita cancelar la reserva del ${date} a las ${time}`,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                read: false
+            });
 
-        // Create notification for business
-        await db.collection('notifications').add({
-            type: 'cancellation_request',
-            venueId: venueId,
-            userId: currentUser.uid,
-            userName: userName,
-            venueName: venueName,
-            reservationDate: date,
-            reservationTime: time,
-            message: `${userName} solicita cancelar la reserva del ${date} a las ${time}`,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            read: false
-        });
-
-        alert('Solicitud de cancelación enviada al local. Te contactarán pronto.');
-    } catch (err) {
-        console.error('Error sending cancellation request:', err);
-        alert('Error al enviar la solicitud. Inténtalo de nuevo.');
-    }
+            showAlert('Solicitud de cancelación enviada al local. Te contactarán pronto.');
+        } catch (err) {
+            console.error('Error sending cancellation request:', err);
+            showAlert('Error al enviar la solicitud. Inténtalo de nuevo.');
+        }
+    });
 };
 
 // Open Chat
@@ -1934,7 +2024,7 @@ window.sendChatMessage = async () => {
         input.value = '';
     } catch (err) {
         console.error('Error sending message:', err);
-        alert('Error al enviar el mensaje');
+        showAlert('Error al enviar el mensaje');
     }
 };
 

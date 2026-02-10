@@ -98,6 +98,16 @@
                     <button type="submit" id="auth-action-btn">Entrar</button>
                 </form>
 
+                <div class="auth-divider">
+                    <span>O accede con</span>
+                </div>
+
+                <button onclick="signInWithGoogle()" class="google-btn">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+                    Continuar con Google
+                </button>
+
+
                 <p class="switch-auth">
                     <span id="switch-text">¿No tienes cuenta?</span>
                     <button id="toggle-auth-mode" class="text-btn">Regístrate</button>
@@ -670,6 +680,33 @@
                         onkeypress="if(event.key==='Enter') sendChatMessage()">
                     <button onclick="sendChatMessage()" class="btn-send-chat"><i
                             class="ph ph-paper-plane-tilt"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CUSTOM ALERT MODAL -->
+        <div id="custom-alert-modal" class="custom-modal hidden">
+            <div class="custom-modal-overlay" onclick="closeCustomAlert()"></div>
+            <div class="custom-modal-content">
+                <div class="custom-modal-icon">
+                    <i class="ph ph-info"></i>
+                </div>
+                <div id="custom-alert-message" class="custom-modal-message"></div>
+                <button onclick="closeCustomAlert()" class="custom-modal-btn">Aceptar</button>
+            </div>
+        </div>
+
+        <!-- CUSTOM CONFIRM MODAL -->
+        <div id="custom-confirm-modal" class="custom-modal hidden">
+            <div class="custom-modal-overlay" onclick="closeCustomConfirm(false)"></div>
+            <div class="custom-modal-content">
+                <div class="custom-modal-icon confirm">
+                    <i class="ph ph-question"></i>
+                </div>
+                <div id="custom-confirm-message" class="custom-modal-message"></div>
+                <div class="custom-modal-buttons">
+                    <button onclick="closeCustomConfirm(false)" class="custom-modal-btn secondary">Cancelar</button>
+                    <button onclick="closeCustomConfirm(true)" class="custom-modal-btn">Aceptar</button>
                 </div>
             </div>
         </div>
