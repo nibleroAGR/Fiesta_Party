@@ -1142,6 +1142,7 @@ async function loadVenues(filters = {}) {
 
         snapshot.forEach(doc => {
             const v = doc.data();
+            const venueName = v.name || "Local sin nombre";
 
             // --- FILTER LOGIC ---
             if (filters.city) {
@@ -1153,30 +1154,30 @@ async function loadVenues(filters = {}) {
                 const dayOfWeek = dateObj.getDay(); // 0=Sun, 1=Mon...
 
                 // Check Blocked Dates
-                if (v.blockedDates && v.blockedDates.includes(filters.date)) return;
+                if (v.blockedDates && Array.isArray(v.blockedDates) && v.blockedDates.includes(filters.date)) return;
 
                 // Check Open Days
-                if (v.scheduleDays && v.scheduleDays.length > 0 && !v.scheduleDays.includes(dayOfWeek)) return;
+                if (v.scheduleDays && Array.isArray(v.scheduleDays) && v.scheduleDays.length > 0 && !v.scheduleDays.includes(dayOfWeek)) return;
 
                 // Check Time Slots (must have at least one)
-                if (!v.timeSlots || v.timeSlots.length === 0) return;
+                if (!v.timeSlots || !Array.isArray(v.timeSlots) || v.timeSlots.length === 0) return;
             }
 
             count++;
-            const coverStyle = v.coverImage ? `background-image: url(${v.coverImage}); background-size:cover;` : `background-color: ${stringToColor(v.name)}`;
+            const coverStyle = v.coverImage ? `background-image: url(${v.coverImage}); background-size:cover;` : `background-color: ${stringToColor(venueName)}`;
 
             grid.innerHTML += `
             <div class="venue-card" onclick="openVenueDetail('${doc.id}')" style="cursor:pointer; margin-bottom: 20px;">
                 <div class="venue-img" style="${coverStyle}"></div>
                 <div class="venue-info">
                     <div class="venue-header-row">
-                        <h3>${v.name}</h3>
-                        <span class="venue-price">${v.price}€ /niño</span>
+                        <h3>${venueName}</h3>
+                        <span class="venue-price">${v.price || 0}€ /niño</span>
                     </div>
-                    <p class="venue-desc">${v.description ? v.description.substring(0, 60) : ''}...</p>
+                    <p class="venue-desc">${v.description ? v.description.substring(0, 60) : 'Sin descripción'}...</p>
                     <div class="venue-footer">
                         <span><i class="ph ph-map-pin"></i> ${v.city || 'Ubicación n/d'}</span>
-                        <span><i class="ph ph-users"></i> Cap: ${v.capacity}</span>
+                        <span><i class="ph ph-users"></i> Cap: ${v.capacity || 0}</span>
                     </div>
                 </div>
             </div>
@@ -1188,9 +1189,14 @@ async function loadVenues(filters = {}) {
         }
 
     } catch (err) {
-        console.error(err);
-        grid.innerHTML = '<p style="text-align:center; color:red;">Error cargando locales</p>';
+        console.error("Error cargando locales:", err);
+        if (err.code === 'permission-denied') {
+            grid.innerHTML = '<p style="text-align:center; color:#666; padding:20px;">Configura los permisos de lectura pública en Firebase para ver los locales.</p>';
+        } else {
+            grid.innerHTML = '<p style="text-align:center; color:red; padding:20px;">Error al conectar con la base de datos de locales.</p>';
+        }
     }
+
 }
 
 // Search & Autocomplete Implementation
