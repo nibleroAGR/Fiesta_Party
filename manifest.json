@@ -1,21 +1,52 @@
 {
   "name": "Fiesta Party",
   "short_name": "FiestaParty",
-  "description": "Tu web de fiesta para reservas y diversión",
+  "description": "Tu web de fiesta para reservas y diversión. Encuentra tu lugar ideal para celebraciones.",
   "start_url": "index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ff4081",
+  "orientation": "portrait",
+  "scope": ".",
+  "categories": [
+    "lifestyle",
+    "entertainment",
+    "social"
+  ],
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "ico.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "icon-512.png",
+      "src": "ico.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mis Reservas",
+      "url": "index.html#reservation-view",
+      "icons": [
+        {
+          "src": "ico.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Invitados",
+      "url": "index.html#invitations-view",
+      "icons": [
+        {
+          "src": "ico.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }
