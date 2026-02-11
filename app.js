@@ -216,57 +216,76 @@ async function signInWithGoogle() {
         googleBtn.disabled = true;
         googleBtn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Cargando...';
 
-        const result = await auth.signInWithPopup(provider);
-        const user = result.user;
-
-        // Check if user already exists in Firestore
-        const userDoc = await db.collection('users').doc(user.uid).get();
-        if (!userDoc.exists) {
-            // New user, create profile with current intendedRole (fallback to family)
-            const roleToAssign = intendedRole || 'family';
-
-            await db.collection('users').doc(user.uid).set({
-                uid: user.uid,
-                email: user.email,
-                name: user.displayName || "Usuario Google",
-                role: roleToAssign,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            // If business, create empty venue profile
-            if (roleToAssign === 'business') {
-                await db.collection('venues').doc(user.uid).set({
-                    ownerId: user.uid,
-                    name: (user.displayName || "Local") + " Venue",
-                    description: "",
-                    price: 0,
-                    capacity: 0,
-                    city: "",
-                    address: ""
-                });
-            }
-            console.log("Nuevo usuario Google registrado como:", roleToAssign);
-            // After profile creation, manually trigger the redirect
-            await handleUserRedirect(user.uid);
-        } else {
-            console.log("Usuario Google ya existente:", userDoc.data().role);
-            // For existing users, redirect immediately
-            await handleUserRedirect(user.uid);
+        // Guardar el rol actual para recuperarlo después del redireccionamiento
+        if (intendedRole) {
+            localStorage.setItem('intendedRole', intendedRole);
         }
+
+        // Cambiar PopUp por Redirect
+        await auth.signInWithRedirect(provider);
     } catch (error) {
         console.error("Google Auth Error:", error);
-        if (error.code === 'auth/popup-blocked') {
-            showAlert("El navegador ha bloqueado la ventana emergente. Por favor, permítela e inténtalo de nuevo.");
-        } else if (location.protocol === 'file:') {
-            showAlert("Error: El acceso con Google NO funciona abriendo el archivo directamente (file://). Debes usar un servidor local o subirlo a un hosting.");
-        } else {
-            showAlert("Error al acceder con Google: " + error.message);
-        }
-    } finally {
+        showAlert("Error al iniciar sesión con Google: " + error.message);
         googleBtn.disabled = false;
         googleBtn.innerHTML = originalContent;
     }
 }
+
+// Función para procesar el resultado del redireccionamiento de Google
+async function handleRedirectResult() {
+    try {
+        const result = await auth.getRedirectResult();
+        if (result && result.user) {
+            const user = result.user;
+
+            // Recuperar el rol guardado (por defecto 'family')
+            const storedRole = localStorage.getItem('intendedRole') || 'family';
+
+            // Verificar si el usuario ya existe en Firestore
+            const userDoc = await db.collection('users').doc(user.uid).get();
+            if (!userDoc.exists) {
+                // Nuevo usuario, crear perfil
+                await db.collection('users').doc(user.uid).set({
+                    uid: user.uid,
+                    email: user.email,
+                    name: user.displayName || "Usuario Google",
+                    role: storedRole,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Si es negocio, crear perfil de local vacío
+                if (storedRole === 'business') {
+                    await db.collection('venues').doc(user.uid).set({
+                        ownerId: user.uid,
+                        name: (user.displayName || "Local") + " Venue",
+                        description: "",
+                        price: 0,
+                        capacity: 0,
+                        city: "",
+                        address: ""
+                    });
+                }
+                console.log("Nuevo usuario Google registrado tras redirect como:", storedRole);
+            }
+
+            // Limpiar el rol guardado una vez procesado
+            localStorage.removeItem('intendedRole');
+
+            // Redirigir al dashboard correspondiente
+            await handleUserRedirect(user.uid);
+        }
+    } catch (error) {
+        console.error("Redirect Result Error:", error);
+        if (location.protocol === 'file:') {
+            showAlert("Error: signInWithRedirect no funciona con file://. Usa un servidor local.");
+        } else {
+            showAlert("Error al completar el acceso con Google: " + error.message);
+        }
+    }
+}
+
+// Llamar al handler de redirect al cargar la página
+handleRedirectResult();
 
 // Reusable function to redirect user after login
 async function handleUserRedirect(uid) {
