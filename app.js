@@ -19,6 +19,38 @@ let userRole = null; // 'family' or 'business'
 let isRegistering = false;
 let intendedRole = null; // Role selected on landing
 
+// --- Safety Storage Helper ---
+const safeStorage = {
+    set: (key, value) => {
+        try {
+            if (window.localStorage) {
+                localStorage.setItem(key, value);
+            }
+        } catch (e) {
+            console.warn("localStorage not available:", e);
+        }
+    },
+    get: (key) => {
+        try {
+            if (window.localStorage) {
+                return localStorage.getItem(key);
+            }
+        } catch (e) {
+            console.warn("localStorage not available:", e);
+        }
+        return null;
+    },
+    remove: (key) => {
+        try {
+            if (window.localStorage) {
+                localStorage.removeItem(key);
+            }
+        } catch (e) {
+            console.warn("localStorage not available:", e);
+        }
+    }
+};
+
 // --- DOM Navigation ---
 // --- DOM Navigation ---
 function showView(viewId) {
@@ -207,39 +239,56 @@ document.getElementById('auth-form').addEventListener('submit', async (e) => {
     }
 });
 
+// --- Loading Overlay Helpers ---
+window.showLoadingOverlay = (text = "Cargando...") => {
+    const overlay = document.getElementById('loading-overlay');
+    const textEl = document.getElementById('loading-text');
+    if (overlay && textEl) {
+        textEl.innerText = text;
+        overlay.classList.remove('hidden');
+    }
+};
+
+window.hideLoadingOverlay = () => {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) overlay.classList.add('hidden');
+};
+
 async function signInWithGoogle() {
     const provider = new firebase.auth.GoogleAuthProvider();
     const googleBtn = document.querySelector('.google-btn');
     const originalContent = googleBtn.innerHTML;
 
     try {
-        googleBtn.disabled = true;
-        googleBtn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Cargando...';
+        // Mostrar transición profesional (Full Screen)
+        showLoadingOverlay("Conectando con Google...");
 
-        // Guardar el rol actual para recuperarlo después del redireccionamiento
+        // Guardar el rol actual
         if (intendedRole) {
-            localStorage.setItem('intendedRole', intendedRole);
+            safeStorage.set('intendedRole', intendedRole);
         }
 
-        // Cambiar PopUp por Redirect
+        // Iniciar redirección
         await auth.signInWithRedirect(provider);
     } catch (error) {
         console.error("Google Auth Error:", error);
+        hideLoadingOverlay();
         showAlert("Error al iniciar sesión con Google: " + error.message);
-        googleBtn.disabled = false;
-        googleBtn.innerHTML = originalContent;
     }
 }
 
 // Función para procesar el resultado del redireccionamiento de Google
 async function handleRedirectResult() {
     try {
+        // Al cargar, si hay un resultado pendiente, mostrar overlay
         const result = await auth.getRedirectResult();
+
         if (result && result.user) {
+            showLoadingOverlay("Preparando tu Dashboard...");
             const user = result.user;
 
             // Recuperar el rol guardado (por defecto 'family')
-            const storedRole = localStorage.getItem('intendedRole') || 'family';
+            const storedRole = safeStorage.get('intendedRole') || 'family';
 
             // Verificar si el usuario ya existe en Firestore
             const userDoc = await db.collection('users').doc(user.uid).get();
@@ -265,18 +314,25 @@ async function handleRedirectResult() {
                         address: ""
                     });
                 }
-                console.log("Nuevo usuario Google registrado tras redirect como:", storedRole);
             }
 
             // Limpiar el rol guardado una vez procesado
-            localStorage.removeItem('intendedRole');
+            safeStorage.remove('intendedRole');
 
             // Redirigir al dashboard correspondiente
             await handleUserRedirect(user.uid);
+
+            // Ocultar overlay tras cargar todo
+            setTimeout(hideLoadingOverlay, 500);
         }
     } catch (error) {
         console.error("Redirect Result Error:", error);
-        if (location.protocol === 'file:') {
+        hideLoadingOverlay();
+
+        // Detectar si es el error de User Agent de Google (común en webviews)
+        if (error.code === 'auth/web-storage-unsupported' || error.message.includes('disallowed_useragent')) {
+            showAlert("Tu aplicación está bloqueando el acceso de Google. Por seguridad, Google requiere un navegador completo. \n\nSolución: Configura el 'UserAgent' en App Inventor o usa el navegador del móvil.");
+        } else if (location.protocol === 'file:') {
             showAlert("Error: signInWithRedirect no funciona con file://. Usa un servidor local.");
         } else {
             showAlert("Error al completar el acceso con Google: " + error.message);
