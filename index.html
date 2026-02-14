@@ -95,12 +95,6 @@
                             sesión iniciada</label>
                     </div>
 
-                    <div id="forgot-password-container"
-                        style="text-align: right; margin-top: -15px; margin-bottom: 20px;">
-                        <a href="#" onclick="event.preventDefault(); resetPassword();"
-                            style="font-size: 0.8rem; color: var(--primary); text-decoration: none; font-weight: 600;">¿Olvidaste
-                            tu contraseña?</a>
-                    </div>
 
                     <!-- Extra fields for registration -->
                     <div id="register-fields" class="hidden">
@@ -119,6 +113,12 @@
                     <span id="switch-text">¿No tienes cuenta?</span>
                     <button id="toggle-auth-mode" class="text-btn">Regístrate</button>
                 </p>
+
+                <div id="forgot-password-container" style="text-align: center; margin-top: 15px;">
+                    <a href="#" onclick="event.preventDefault(); resetPassword();"
+                        style="font-size: 0.8rem; color: var(--primary); text-decoration: none; font-weight: 600;">¿Olvidaste
+                        tu contraseña?</a>
+                </div>
             </div>
         </section>
 

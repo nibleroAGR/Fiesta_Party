@@ -211,13 +211,22 @@ document.getElementById('auth-form').addEventListener('submit', async (e) => {
 
         } else {
             // Login
-            const rememberMe = document.getElementById('remember-me').checked;
-            const persistence = rememberMe
-                ? firebase.auth.Auth.Persistence.LOCAL
-                : firebase.auth.Auth.Persistence.SESSION;
+            const rememberMeEl = document.getElementById('remember-me');
+            const rememberMe = rememberMeEl ? rememberMeEl.checked : false;
 
-            await auth.setPersistence(persistence);
+            try {
+                // Use standard persistence strings/constants for compatibility
+                const persistence = rememberMe
+                    ? (firebase.auth.Persistence?.LOCAL || 'local')
+                    : (firebase.auth.Persistence?.SESSION || 'session');
+
+                await auth.setPersistence(persistence);
+            } catch (pError) {
+                console.warn("Persistence error, continuing with default:", pError);
+            }
+
             await auth.signInWithEmailAndPassword(email, password);
+            // The onAuthStateChanged listener will handle the redirect
         }
     } catch (error) {
         console.error("Auth Error:", error);
@@ -246,34 +255,61 @@ window.resetPassword = async () => {
 
 // Reusable function to redirect user after login
 async function handleUserRedirect(uid) {
-    const doc = await db.collection('users').doc(uid).get();
-    if (!doc.exists) return; // Wait for document to exist
+    try {
+        const doc = await db.collection('users').doc(uid).get();
 
-    const data = doc.data();
-    userRole = data.role;
+        if (!doc.exists) {
+            console.error("User document not found in Firestore for UID:", uid);
+            // If it's a new user and we are still in registration flow, wait a bit
+            if (isRegistering) {
+                setTimeout(() => handleUserRedirect(uid), 1500);
+                return;
+            }
+            showAlert("No se encontró tu perfil de usuario. Por favor, regístrate de nuevo.");
+            auth.signOut();
+            return;
+        }
 
-    // Redirect based on role
-    if (userRole === 'family') {
-        const nameDisplay = document.getElementById('user-name-display');
-        if (nameDisplay) nameDisplay.innerText = data.name;
+        const data = doc.data();
+        userRole = data.role;
+        console.log("User logged in with role:", userRole);
 
-        // Find the "Explora" tab to set active state
-        const initialTab = document.querySelector('#family-nav .nav-item');
-        switchFamilyTab('family-view', initialTab);
-        loadVenues();
-    } else if (userRole === 'business') {
-        const bizDisplay = document.getElementById('biz-name-display');
-        if (bizDisplay) bizDisplay.innerText = data.name || "Empresa";
+        // Reset Auth button if it was in loading state
+        const authBtn = document.getElementById('auth-action-btn');
+        if (authBtn) {
+            authBtn.disabled = false;
+            authBtn.innerText = isRegistering ? "Crear Cuenta" : "Entrar";
+        }
 
-        // Gear icon is usually the 4th item in business nav
-        const bizTabs = document.querySelectorAll('#business-nav .nav-item');
-        const configTab = bizTabs[3] || bizTabs[0];
+        // Redirect based on role
+        if (userRole === 'family') {
+            const nameDisplay = document.getElementById('user-name-display');
+            if (nameDisplay) nameDisplay.innerText = data.name;
 
-        switchBusinessTab('business-view', configTab);
-        loadBusinessProfile();
-        setTimeout(() => updateNotificationBadge(), 1000);
-    } else {
-        showAlert("Rol no definido para este usuario");
+            const initialTab = document.querySelector('#family-nav .nav-item');
+            switchFamilyTab('family-view', initialTab);
+            loadVenues();
+        } else if (userRole === 'business') {
+            const bizDisplay = document.getElementById('biz-name-display');
+            if (bizDisplay) bizDisplay.innerText = data.name || "Empresa";
+
+            const bizTabs = document.querySelectorAll('#business-nav .nav-item');
+            const configTab = bizTabs[3] || bizTabs[0];
+
+            switchBusinessTab('business-view', configTab);
+            loadBusinessProfile();
+            setTimeout(() => updateNotificationBadge(), 1000);
+        } else {
+            showAlert("Rol no definido para este usuario");
+        }
+    } catch (err) {
+        console.error("Redirect error:", err);
+        showAlert("Error al cargar tu sesión: " + err.message);
+        const authBtn = document.getElementById('auth-action-btn');
+        if (authBtn) {
+            authBtn.disabled = false;
+            authBtn.innerText = isRegistering ? "Crear Cuenta" : "Entrar";
+        }
     }
 }
 
