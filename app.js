@@ -19,7 +19,6 @@ let userRole = null; // 'family' or 'business'
 let isRegistering = false;
 let intendedRole = null; // Role selected on landing
 
-
 // --- DOM Navigation ---
 // --- DOM Navigation ---
 function showView(viewId) {
@@ -59,23 +58,23 @@ window.setAuthMode = (registering) => {
     const switchText = document.getElementById('switch-text');
     const toggleBtn = document.getElementById('toggle-auth-mode');
 
-    const rememberRow = document.getElementById('remember-session-container');
-    const forgotLink = document.getElementById('forgot-password-container');
+    const rememberContainer = document.getElementById('remember-session-container');
+    const forgotContainer = document.getElementById('forgot-password-container');
 
     if (isRegistering) {
         btn.innerText = "Crear Cuenta";
         switchText.innerText = "¿Ya tienes cuenta?";
         toggleBtn.innerText = "Inicia Sesión";
         extraFields.classList.remove('hidden');
-        if (rememberRow) rememberRow.classList.add('hidden');
-        if (forgotLink) forgotLink.classList.add('hidden');
+        if (rememberContainer) rememberContainer.style.display = 'none';
+        if (forgotContainer) forgotContainer.style.display = 'none';
     } else {
         btn.innerText = "Entrar";
         switchText.innerText = "¿No tienes cuenta?";
         toggleBtn.innerText = "Regístrate";
         extraFields.classList.add('hidden');
-        if (rememberRow) rememberRow.classList.remove('hidden');
-        if (forgotLink) forgotLink.classList.remove('hidden');
+        if (rememberContainer) rememberContainer.style.display = 'flex';
+        if (forgotContainer) forgotContainer.style.display = 'block';
     }
 };
 
@@ -150,23 +149,24 @@ document.getElementById('toggle-auth-mode').addEventListener('click', (e) => {
     const switchText = document.getElementById('switch-text');
     const toggleBtn = document.getElementById('toggle-auth-mode');
     const extraFields = document.getElementById('register-fields');
-    const rememberRow = document.getElementById('remember-session-container');
-    const forgotLink = document.getElementById('forgot-password-container');
+
+    const rememberContainer = document.getElementById('remember-session-container');
+    const forgotContainer = document.getElementById('forgot-password-container');
 
     if (isRegistering) {
         btn.innerText = "Crear Cuenta";
         switchText.innerText = "¿Ya tienes cuenta?";
         toggleBtn.innerText = "Inicia Sesión";
         extraFields.classList.remove('hidden');
-        if (rememberRow) rememberRow.classList.add('hidden');
-        if (forgotLink) forgotLink.classList.add('hidden');
+        if (rememberContainer) rememberContainer.style.display = 'none';
+        if (forgotContainer) forgotContainer.style.display = 'none';
     } else {
         btn.innerText = "Entrar";
         switchText.innerText = "¿No tienes cuenta?";
         toggleBtn.innerText = "Regístrate";
         extraFields.classList.add('hidden');
-        if (rememberRow) rememberRow.classList.remove('hidden');
-        if (forgotLink) forgotLink.classList.remove('hidden');
+        if (rememberContainer) rememberContainer.style.display = 'flex';
+        if (forgotContainer) forgotContainer.style.display = 'block';
     }
 });
 
@@ -211,22 +211,23 @@ document.getElementById('auth-form').addEventListener('submit', async (e) => {
 
         } else {
             // Login
-            const rememberMeEl = document.getElementById('remember-me');
-            const rememberMe = rememberMeEl ? rememberMeEl.checked : false;
+            const rememberMe = document.getElementById('remember-me')?.checked;
 
             try {
-                // Use standard persistence strings/constants for compatibility
-                const persistence = rememberMe
-                    ? (firebase.auth.Persistence?.LOCAL || 'local')
-                    : (firebase.auth.Persistence?.SESSION || 'session');
+                // Ensure cloud sign out to avoid stale/expired credentials
+                await auth.signOut();
 
-                await auth.setPersistence(persistence);
+                if (window.firebase && firebase.auth && firebase.auth.Auth) {
+                    const p = rememberMe
+                        ? firebase.auth.Auth.Persistence.LOCAL
+                        : firebase.auth.Auth.Persistence.SESSION;
+                    await auth.setPersistence(p);
+                }
             } catch (pError) {
-                console.warn("Persistence error, continuing with default:", pError);
+                console.warn("Persistence error:", pError);
             }
 
             await auth.signInWithEmailAndPassword(email, password);
-            // The onAuthStateChanged listener will handle the redirect
         }
     } catch (error) {
         console.error("Auth Error:", error);
@@ -252,36 +253,33 @@ window.resetPassword = async () => {
     }
 }
 
-
 // Reusable function to redirect user after login
 async function handleUserRedirect(uid) {
     try {
         const doc = await db.collection('users').doc(uid).get();
-
         if (!doc.exists) {
-            console.error("User document not found in Firestore for UID:", uid);
-            // If it's a new user and we are still in registration flow, wait a bit
+            console.error("User profile not found in Firestore for UID:", uid);
+            // Handle race conditions during registration
             if (isRegistering) {
                 setTimeout(() => handleUserRedirect(uid), 1500);
                 return;
             }
-            showAlert("No se encontró tu perfil de usuario. Por favor, regístrate de nuevo.");
+            showAlert("No se encontró tu perfil. Por favor, regístrate de nuevo.");
             auth.signOut();
             return;
         }
 
         const data = doc.data();
         userRole = data.role;
-        console.log("User logged in with role:", userRole);
+        console.log("Logged in role:", userRole);
 
-        // Reset Auth button if it was in loading state
-        const authBtn = document.getElementById('auth-action-btn');
-        if (authBtn) {
-            authBtn.disabled = false;
-            authBtn.innerText = isRegistering ? "Crear Cuenta" : "Entrar";
+        // Reset UI
+        const btn = document.getElementById('auth-action-btn');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = isRegistering ? "Crear Cuenta" : "Entrar";
         }
 
-        // Redirect based on role
         if (userRole === 'family') {
             const nameDisplay = document.getElementById('user-name-display');
             if (nameDisplay) nameDisplay.innerText = data.name;
@@ -300,20 +298,13 @@ async function handleUserRedirect(uid) {
             loadBusinessProfile();
             setTimeout(() => updateNotificationBadge(), 1000);
         } else {
-            showAlert("Rol no definido para este usuario");
+            showAlert("Rol no definido");
         }
     } catch (err) {
-        console.error("Redirect error:", err);
+        console.error("Redirect Error:", err);
         showAlert("Error al cargar tu sesión: " + err.message);
-        const authBtn = document.getElementById('auth-action-btn');
-        if (authBtn) {
-            authBtn.disabled = false;
-            authBtn.innerText = isRegistering ? "Crear Cuenta" : "Entrar";
-        }
     }
 }
-
-
 
 // --- Business Navigation Helper ---
 window.switchBusinessTab = (viewId, el) => {
@@ -337,7 +328,6 @@ window.switchBusinessTab = (viewId, el) => {
 auth.onAuthStateChanged(async (user) => {
     if (user) {
         currentUser = user;
-        // Delegate to helper function
         await handleUserRedirect(user.uid);
     } else {
         currentUser = null;
@@ -346,7 +336,6 @@ auth.onAuthStateChanged(async (user) => {
         loadVenues(); // Load venues on landing for guests
     }
 });
-
 
 function logout() {
     auth.signOut();
@@ -1154,7 +1143,6 @@ async function loadVenues(filters = {}) {
 
         snapshot.forEach(doc => {
             const v = doc.data();
-            const venueName = v.name || "Local sin nombre";
 
             // --- FILTER LOGIC ---
             if (filters.city) {
@@ -1166,30 +1154,30 @@ async function loadVenues(filters = {}) {
                 const dayOfWeek = dateObj.getDay(); // 0=Sun, 1=Mon...
 
                 // Check Blocked Dates
-                if (v.blockedDates && Array.isArray(v.blockedDates) && v.blockedDates.includes(filters.date)) return;
+                if (v.blockedDates && v.blockedDates.includes(filters.date)) return;
 
                 // Check Open Days
-                if (v.scheduleDays && Array.isArray(v.scheduleDays) && v.scheduleDays.length > 0 && !v.scheduleDays.includes(dayOfWeek)) return;
+                if (v.scheduleDays && v.scheduleDays.length > 0 && !v.scheduleDays.includes(dayOfWeek)) return;
 
                 // Check Time Slots (must have at least one)
-                if (!v.timeSlots || !Array.isArray(v.timeSlots) || v.timeSlots.length === 0) return;
+                if (!v.timeSlots || v.timeSlots.length === 0) return;
             }
 
             count++;
-            const coverStyle = v.coverImage ? `background-image: url(${v.coverImage}); background-size:cover;` : `background-color: ${stringToColor(venueName)}`;
+            const coverStyle = v.coverImage ? `background-image: url(${v.coverImage}); background-size:cover;` : `background-color: ${stringToColor(v.name)}`;
 
             grid.innerHTML += `
             <div class="venue-card" onclick="openVenueDetail('${doc.id}')" style="cursor:pointer; margin-bottom: 20px;">
                 <div class="venue-img" style="${coverStyle}"></div>
                 <div class="venue-info">
                     <div class="venue-header-row">
-                        <h3>${venueName}</h3>
-                        <span class="venue-price">${v.price || 0}€ /niño</span>
+                        <h3>${v.name}</h3>
+                        <span class="venue-price">${v.price}€ /niño</span>
                     </div>
-                    <p class="venue-desc">${v.description ? v.description.substring(0, 60) : 'Sin descripción'}...</p>
+                    <p class="venue-desc">${v.description ? v.description.substring(0, 60) : ''}...</p>
                     <div class="venue-footer">
                         <span><i class="ph ph-map-pin"></i> ${v.city || 'Ubicación n/d'}</span>
-                        <span><i class="ph ph-users"></i> Cap: ${v.capacity || 0}</span>
+                        <span><i class="ph ph-users"></i> Cap: ${v.capacity}</span>
                     </div>
                 </div>
             </div>
@@ -1201,14 +1189,9 @@ async function loadVenues(filters = {}) {
         }
 
     } catch (err) {
-        console.error("Error cargando locales:", err);
-        if (err.code === 'permission-denied') {
-            grid.innerHTML = '<p style="text-align:center; color:#666; padding:20px;">Configura los permisos de lectura pública en Firebase para ver los locales.</p>';
-        } else {
-            grid.innerHTML = '<p style="text-align:center; color:red; padding:20px;">Error al conectar con la base de datos de locales.</p>';
-        }
+        console.error(err);
+        grid.innerHTML = '<p style="text-align:center; color:red;">Error cargando locales</p>';
     }
-
 }
 
 // Search & Autocomplete Implementation
