@@ -14,13 +14,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Phosphor Icons for professional iconography -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#ff4081">
-    <!-- iOS support -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Fiesta Party">
-    <link rel="apple-touch-icon" href="ico.png">
 </head>
 
 <body>
@@ -94,6 +87,21 @@
                         <input type="password" id="password" required placeholder="********">
                     </div>
 
+                    <div id="remember-session-container" class="remember-me-row"
+                        style="display: flex; align-items: center; gap: 8px; margin-bottom: 20px; margin-top: -10px;">
+                        <input type="checkbox" id="remember-me" style="width: auto; margin: 0; cursor: pointer;">
+                        <label for="remember-me"
+                            style="margin: 0; font-size: 0.85rem; color: var(--text-muted); cursor: pointer; text-transform: none; font-weight: 500;">Mantener
+                            sesión iniciada</label>
+                    </div>
+
+                    <div id="forgot-password-container"
+                        style="text-align: right; margin-top: -15px; margin-bottom: 20px;">
+                        <a href="#" onclick="event.preventDefault(); resetPassword();"
+                            style="font-size: 0.8rem; color: var(--primary); text-decoration: none; font-weight: 600;">¿Olvidaste
+                            tu contraseña?</a>
+                    </div>
+
                     <!-- Extra fields for registration -->
                     <div id="register-fields" class="hidden">
                         <div class="input-group">
@@ -105,14 +113,6 @@
                     <button type="submit" id="auth-action-btn">Entrar</button>
                 </form>
 
-                <div class="auth-divider">
-                    <span>O accede con</span>
-                </div>
-
-                <button onclick="signInWithGoogle()" class="google-btn">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
-                    Continuar con Google
-                </button>
 
 
                 <p class="switch-auth">
@@ -718,17 +718,6 @@
             </div>
         </div>
 
-        <!-- LOADING OVERLAY (For Transitions/Auth) -->
-        <div id="loading-overlay" class="loading-overlay hidden">
-            <div class="loader-content">
-                <div class="shimmer-logo">
-                    <img src="fiesta_logo.png" alt="Logo">
-                </div>
-                <div class="loading-spinner"></div>
-                <p id="loading-text">Conectando de forma segura...</p>
-            </div>
-        </div>
-
     </div>
 
     <!-- Firebase SDKs -->
@@ -738,13 +727,6 @@
     <!-- PDF Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="app.js"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('service-worker.js')
-                .then(() => console.log('Service Worker registrado'))
-                .catch(err => console.log('Error en Service Worker:', err));
-        }
-    </script>
     <!-- Hidden clock for internal use -->
     <div id="hidden-system-clock" style="display:none;"></div>
 </body>

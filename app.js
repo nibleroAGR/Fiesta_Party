@@ -19,37 +19,6 @@ let userRole = null; // 'family' or 'business'
 let isRegistering = false;
 let intendedRole = null; // Role selected on landing
 
-// --- Safety Storage Helper ---
-const safeStorage = {
-    set: (key, value) => {
-        try {
-            if (window.localStorage) {
-                localStorage.setItem(key, value);
-            }
-        } catch (e) {
-            console.warn("localStorage not available:", e);
-        }
-    },
-    get: (key) => {
-        try {
-            if (window.localStorage) {
-                return localStorage.getItem(key);
-            }
-        } catch (e) {
-            console.warn("localStorage not available:", e);
-        }
-        return null;
-    },
-    remove: (key) => {
-        try {
-            if (window.localStorage) {
-                localStorage.removeItem(key);
-            }
-        } catch (e) {
-            console.warn("localStorage not available:", e);
-        }
-    }
-};
 
 // --- DOM Navigation ---
 // --- DOM Navigation ---
@@ -90,16 +59,23 @@ window.setAuthMode = (registering) => {
     const switchText = document.getElementById('switch-text');
     const toggleBtn = document.getElementById('toggle-auth-mode');
 
+    const rememberRow = document.getElementById('remember-session-container');
+    const forgotLink = document.getElementById('forgot-password-container');
+
     if (isRegistering) {
         btn.innerText = "Crear Cuenta";
         switchText.innerText = "¿Ya tienes cuenta?";
         toggleBtn.innerText = "Inicia Sesión";
         extraFields.classList.remove('hidden');
+        if (rememberRow) rememberRow.classList.add('hidden');
+        if (forgotLink) forgotLink.classList.add('hidden');
     } else {
         btn.innerText = "Entrar";
         switchText.innerText = "¿No tienes cuenta?";
         toggleBtn.innerText = "Regístrate";
         extraFields.classList.add('hidden');
+        if (rememberRow) rememberRow.classList.remove('hidden');
+        if (forgotLink) forgotLink.classList.remove('hidden');
     }
 };
 
@@ -174,17 +150,23 @@ document.getElementById('toggle-auth-mode').addEventListener('click', (e) => {
     const switchText = document.getElementById('switch-text');
     const toggleBtn = document.getElementById('toggle-auth-mode');
     const extraFields = document.getElementById('register-fields');
+    const rememberRow = document.getElementById('remember-session-container');
+    const forgotLink = document.getElementById('forgot-password-container');
 
     if (isRegistering) {
         btn.innerText = "Crear Cuenta";
         switchText.innerText = "¿Ya tienes cuenta?";
         toggleBtn.innerText = "Inicia Sesión";
         extraFields.classList.remove('hidden');
+        if (rememberRow) rememberRow.classList.add('hidden');
+        if (forgotLink) forgotLink.classList.add('hidden');
     } else {
         btn.innerText = "Entrar";
         switchText.innerText = "¿No tienes cuenta?";
         toggleBtn.innerText = "Regístrate";
         extraFields.classList.add('hidden');
+        if (rememberRow) rememberRow.classList.remove('hidden');
+        if (forgotLink) forgotLink.classList.remove('hidden');
     }
 });
 
@@ -229,6 +211,12 @@ document.getElementById('auth-form').addEventListener('submit', async (e) => {
 
         } else {
             // Login
+            const rememberMe = document.getElementById('remember-me').checked;
+            const persistence = rememberMe
+                ? firebase.auth.Auth.Persistence.LOCAL
+                : firebase.auth.Auth.Persistence.SESSION;
+
+            await auth.setPersistence(persistence);
             await auth.signInWithEmailAndPassword(email, password);
         }
     } catch (error) {
@@ -239,109 +227,22 @@ document.getElementById('auth-form').addEventListener('submit', async (e) => {
     }
 });
 
-// --- Loading Overlay Helpers ---
-window.showLoadingOverlay = (text = "Cargando...") => {
-    const overlay = document.getElementById('loading-overlay');
-    const textEl = document.getElementById('loading-text');
-    if (overlay && textEl) {
-        textEl.innerText = text;
-        overlay.classList.remove('hidden');
+window.resetPassword = async () => {
+    const email = document.getElementById('email').value;
+    if (!email) {
+        showAlert("Por favor, introduce tu email arriba primero.");
+        return;
     }
-};
-
-window.hideLoadingOverlay = () => {
-    const overlay = document.getElementById('loading-overlay');
-    if (overlay) overlay.classList.add('hidden');
-};
-
-async function signInWithGoogle() {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    const googleBtn = document.querySelector('.google-btn');
-    const originalContent = googleBtn.innerHTML;
 
     try {
-        // Mostrar transición profesional (Full Screen)
-        showLoadingOverlay("Conectando con Google...");
-
-        // Guardar el rol actual
-        if (intendedRole) {
-            safeStorage.set('intendedRole', intendedRole);
-        }
-
-        // Iniciar redirección
-        await auth.signInWithRedirect(provider);
+        await auth.sendPasswordResetEmail(email);
+        showAlert("¡Listo! Te hemos enviado un enlace a tu correo para que cambies tu contraseña.");
     } catch (error) {
-        console.error("Google Auth Error:", error);
-        hideLoadingOverlay();
-        showAlert("Error al iniciar sesión con Google: " + error.message);
+        console.error("Reset Error:", error);
+        showAlert("Error: " + error.message);
     }
 }
 
-// Función para procesar el resultado del redireccionamiento de Google
-async function handleRedirectResult() {
-    try {
-        // Al cargar, si hay un resultado pendiente, mostrar overlay
-        const result = await auth.getRedirectResult();
-
-        if (result && result.user) {
-            showLoadingOverlay("Preparando tu Dashboard...");
-            const user = result.user;
-
-            // Recuperar el rol guardado (por defecto 'family')
-            const storedRole = safeStorage.get('intendedRole') || 'family';
-
-            // Verificar si el usuario ya existe en Firestore
-            const userDoc = await db.collection('users').doc(user.uid).get();
-            if (!userDoc.exists) {
-                // Nuevo usuario, crear perfil
-                await db.collection('users').doc(user.uid).set({
-                    uid: user.uid,
-                    email: user.email,
-                    name: user.displayName || "Usuario Google",
-                    role: storedRole,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                // Si es negocio, crear perfil de local vacío
-                if (storedRole === 'business') {
-                    await db.collection('venues').doc(user.uid).set({
-                        ownerId: user.uid,
-                        name: (user.displayName || "Local") + " Venue",
-                        description: "",
-                        price: 0,
-                        capacity: 0,
-                        city: "",
-                        address: ""
-                    });
-                }
-            }
-
-            // Limpiar el rol guardado una vez procesado
-            safeStorage.remove('intendedRole');
-
-            // Redirigir al dashboard correspondiente
-            await handleUserRedirect(user.uid);
-
-            // Ocultar overlay tras cargar todo
-            setTimeout(hideLoadingOverlay, 500);
-        }
-    } catch (error) {
-        console.error("Redirect Result Error:", error);
-        hideLoadingOverlay();
-
-        // Detectar si es el error de User Agent de Google (común en webviews)
-        if (error.code === 'auth/web-storage-unsupported' || error.message.includes('disallowed_useragent')) {
-            showAlert("Tu aplicación está bloqueando el acceso de Google. Por seguridad, Google requiere un navegador completo. \n\nSolución: Configura el 'UserAgent' en App Inventor o usa el navegador del móvil.");
-        } else if (location.protocol === 'file:') {
-            showAlert("Error: signInWithRedirect no funciona con file://. Usa un servidor local.");
-        } else {
-            showAlert("Error al completar el acceso con Google: " + error.message);
-        }
-    }
-}
-
-// Llamar al handler de redirect al cargar la página
-handleRedirectResult();
 
 // Reusable function to redirect user after login
 async function handleUserRedirect(uid) {
