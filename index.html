@@ -57,12 +57,17 @@
 
             <div class="footer-biz"
                 style="margin: 20px; margin-bottom: 40px; padding: 24px; background: white; border-radius: 20px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); text-align: center;">
-                <h3 style="margin-bottom: 10px;">¿Tienes un negocio?</h3>
+                <h3 style="margin-bottom: 10px;">¿Tienes un negocio o servicio?</h3>
                 <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 15px;">Únete a Fiesta Party y
-                    llega
-                    a cientos de familias en tu zona.</p>
-                <button onclick="window.setAuthMode(false); showAuth('business')" class="btn-secondary">Somos
-                    empresa</button>
+                    llega a cientos de familias en tu zona.</p>
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button onclick="window.setAuthMode(false); showAuth('business')" class="btn-secondary"
+                        style="flex: 1; border-color: var(--secondary); color: var(--secondary);">Somos
+                        empresa</button>
+                    <button onclick="window.setAuthMode(false); showAuth('service')" class="btn-secondary"
+                        style="flex: 1; border-color: var(--primary); color: var(--primary);">Ofrezco
+                        servicio</button>
+                </div>
             </div>
         </section>
 
@@ -95,7 +100,6 @@
                             sesión iniciada</label>
                     </div>
 
-
                     <!-- Extra fields for registration -->
                     <div id="register-fields" class="hidden">
                         <div class="input-group">
@@ -107,15 +111,13 @@
                     <button type="submit" id="auth-action-btn">Entrar</button>
                 </form>
 
-
-
                 <p class="switch-auth">
                     <span id="switch-text">¿No tienes cuenta?</span>
                     <button id="toggle-auth-mode" class="text-btn">Regístrate</button>
                 </p>
 
                 <div id="forgot-password-container" style="text-align: center; margin-top: 15px;">
-                    <a href="#" onclick="event.preventDefault(); resetPassword();"
+                    <a href="#" onclick="event.preventDefault(); window.resetPassword();"
                         style="font-size: 0.8rem; color: var(--primary); text-decoration: none; font-weight: 600;">¿Olvidaste
                         tu contraseña?</a>
                 </div>
@@ -281,6 +283,22 @@
                 <i class="ph ph-receipt"></i>
             </div>
             <div class="nav-item active" onclick="switchBusinessTab('business-view', this)">
+                <i class="ph ph-gear"></i>
+            </div>
+        </nav>
+
+        <!-- SERVICE BOTTOM NAV -->
+        <nav id="service-nav" class="bottom-nav hidden">
+            <div class="nav-item" onclick="switchServiceTab('service-reservations-view', this)">
+                <i class="ph ph-calendar-check"></i>
+            </div>
+            <div class="nav-item" onclick="switchServiceTab('service-notifications-view', this)">
+                <i class="ph ph-bell"></i>
+            </div>
+            <div class="nav-item" onclick="switchServiceTab('service-billing-view', this)">
+                <i class="ph ph-receipt"></i>
+            </div>
+            <div class="nav-item active" onclick="switchServiceTab('service-view', this)">
                 <i class="ph ph-gear"></i>
             </div>
         </nav>
@@ -497,14 +515,6 @@
                         </div>
                         <div class="form-row">
                             <div class="input-group">
-                                <label>Precio / niño (€)</label>
-                                <input type="number" id="venue-price">
-                            </div>
-                            <div class="input-group">
-                                <label>Mín. Niños</label>
-                                <input type="number" id="venue-min-kids" value="10">
-                            </div>
-                            <div class="input-group">
                                 <label>Aforo Máx.</label>
                                 <input type="number" id="venue-capacity">
                             </div>
@@ -547,45 +557,284 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Horarios -->
+                    <!-- Tarifas y Horarios Dinámicos -->
                     <div class="form-section">
-                        <h3><i class="ph ph-calendar"></i> Disponibilidad</h3>
-                        <div
-                            style="background: #fdf2f8; padding: 15px; border-radius: 12px; border: 1px solid #fce7f3;">
-                            <h4 style="margin-bottom: 10px; font-size: 0.9rem;">Días de Apertura</h4>
-                            <div class="days-grid"
-                                style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 15px;">
-                                <label><input type="checkbox" name="openDays" value="1"> Lun</label>
-                                <label><input type="checkbox" name="openDays" value="2"> Mar</label>
-                                <label><input type="checkbox" name="openDays" value="3"> Mié</label>
-                                <label><input type="checkbox" name="openDays" value="4"> Jue</label>
-                                <label><input type="checkbox" name="openDays" value="5"> Vie</label>
-                                <label><input type="checkbox" name="openDays" value="6"> Sáb</label>
-                                <label><input type="checkbox" name="openDays" value="0"> Dom</label>
-                            </div>
+                        <h3><i class="ph ph-calendar-star"></i> Tarifas y Horarios</h3>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 20px;">
+                            Configura tramos según el día de la semana (ej. L-J y V-D). Cada tramo puede tener su propio
+                            precio, mínimo de niños y horarios.
+                        </p>
 
-                            <h4 style="margin-bottom: 10px; font-size: 0.9rem;">Horas de Inicio</h4>
-                            <div class="form-row" style="margin-bottom: 10px; align-items: center;">
-                                <input type="time" id="new-slot-time">
-                                <button type="button" id="btn-add-slot" class="btn-secondary"
-                                    style="width: auto;">+</button>
-                            </div>
-                            <div id="slots-list" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
-
-                            <h4 style="margin-top: 20px; margin-bottom: 10px; font-size: 0.9rem; color: #ef4444;">
-                                Bloquear Fechas</h4>
-                            <div class="form-row" style="margin-bottom: 10px; align-items: center;">
-                                <input type="date" id="new-blocked-date">
-                                <button type="button" id="btn-block-date"
-                                    style="background: #ef4444; color: white; border: none; border-radius: 12px; padding: 14px;">Bloquear</button>
-                            </div>
-                            <div id="blocked-dates-list" style="display: flex; flex-direction: column; gap: 5px;"></div>
+                        <div id="pricing-rules-container">
+                            <!-- Se cargará dinámicamente -->
                         </div>
+
+                        <button type="button" onclick="addPricingRule()" class="btn-secondary"
+                            style="margin-top: 10px; background: #fdf2f8; border-color: #fce7f3; color: var(--primary);">
+                            <i class="ph ph-plus-circle"></i> Añadir Tramo de Tarifas
+                        </button>
+
+                        <h4 style="margin-top: 40px; margin-bottom: 10px; font-size: 0.9rem; color: #ef4444;"> Bloquear
+                            Fechas Específicas</h4>
+                        <div class="form-row" style="margin-bottom: 10px; align-items: center;">
+                            <input type="date" id="new-blocked-date">
+                            <button type="button" id="btn-block-date"
+                                style="background: #ef4444; color: white; border: none; border-radius: 12px; padding: 14px;">Bloquear</button>
+                        </div>
+                        <div id="blocked-dates-list" style="display: flex; flex-direction: column; gap: 5px;"></div>
                     </div>
 
                     <button type="submit" class="btn-save">Guardar Cambios</button>
                 </form>
+            </div>
+            <div style="height: 80px;"></div>
+        </section>
+
+        <!-- APP: SERVICE DASHBOARD (CONFIGURACION / DASHBOARD) -->
+        <section id="service-view" class="view hidden">
+            <header class="app-header service-header"
+                style="background: transparent; margin-bottom: 20px; display: flex; flex-direction: column; align-items: flex-start; position: relative;">
+                <h1 class="colorful-logo" style="margin-left: 0; text-align: left;">Fiesta Party</h1>
+                <div class="user-pill" onclick="logout()"
+                    style="position: absolute; top: 15px; right: 20px; cursor: pointer; background: #fdf2f8; padding: 4px 4px 4px 12px; border-radius: 50px; display: flex; align-items: center; gap: 8px;">
+                    <div style="text-align: right; line-height: 1.2;">
+                        <span id="service-name-display"
+                            style="display:block; color: var(--primary); font-weight: 700;">Servicio</span>
+                        <small style="font-size: 0.7rem; color: var(--secondary);">Salir</small>
+                    </div>
+                    <div class="avatar" style="background: white;">👤</div>
+                </div>
+            </header>
+
+            <div class="stats-row">
+                <div class="stat-card" style="cursor: pointer; position: relative;"
+                    onclick="switchServiceTab('service-stats-view')">
+                    <span class="stat-num" id="service-stat-reservations">0</span>
+                    <span class="stat-label">Reservas Totales</span>
+                    <i class="ph ph-chart-line-up"
+                        style="position: absolute; top: 10px; right: 10px; opacity: 0.3;"></i>
+                </div>
+                <div class="stat-card" style="cursor: pointer; position: relative;"
+                    onclick="switchServiceTab('service-stats-view')">
+                    <span class="stat-num" id="service-stat-visits">0</span>
+                    <span class="stat-label">Visitas Perfil</span>
+                    <i class="ph ph-chart-bar" style="position: absolute; top: 10px; right: 10px; opacity: 0.3;"></i>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Gestionar Mi Servicio</h3>
+                <form id="service-form">
+                    <!-- Información Básica -->
+                    <div class="form-section">
+                        <h3><i class="ph ph-user"></i> Información Principal</h3>
+                        <div class="input-group">
+                            <label>Nombre Artístico / Marca</label>
+                            <input type="text" id="service-name" placeholder="Ej. El Mago de las Fiestas">
+                        </div>
+                        <div class="input-group">
+                            <label>Descripción del Servicio</label>
+                            <textarea id="service-desc" rows="3" placeholder="Describe lo que haces..."></textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="input-group">
+                                <label>Teléfono Movil</label>
+                                <input type="tel" id="service-phone" placeholder="600 000 000">
+                            </div>
+                            <div class="input-group">
+                                <label>Ciudad Base</label>
+                                <input type="text" id="service-base-city" placeholder="Ej: Barcelona">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tarifas -->
+                    <div class="form-section">
+                        <h3><i class="ph ph-currency-eur"></i> Tarifas y Precios</h3>
+                        <div class="form-row">
+                            <div class="input-group">
+                                <label>Precio Base</label>
+                                <input type="number" id="service-price" placeholder="40">
+                            </div>
+                            <div class="input-group">
+                                <label>Tipo de Cobro</label>
+                                <select id="service-price-type">
+                                    <option value="hour">Por Hora</option>
+                                    <option value="service">Por Servicio completo</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>Precio Hora Extra (€)</label>
+                            <input type="number" id="service-extra-hour" placeholder="15">
+                        </div>
+                    </div>
+
+                    <!-- Multimedia -->
+                    <div class="form-section">
+                        <h3><i class="ph ph-image"></i> Fotos del Servicio</h3>
+                        <div class="input-group">
+                            <label>Foto Principal</label>
+                            <input type="file" id="service-cover-input" accept="image/*">
+                            <div id="service-cover-preview"
+                                style="margin-top:10px; height:150px; background:#f0f0f0; border-radius:12px; background-size:cover; background-position:center;">
+                            </div>
+                        </div>
+                        <div class="input-group" style="margin-top: 20px;">
+                            <label>Galería de Trabajos</label>
+                            <input type="file" id="service-gallery-input" accept="image/*" multiple>
+                        </div>
+                        <div id="service-gallery-preview-grid" class="gallery-grid"></div>
+                    </div>
+
+                    <!-- Lo que ofrece -->
+                    <div class="form-section">
+                        <h3><i class="ph ph-star"></i> Lo que ofrezco</h3>
+                        <div class="input-group">
+                            <label>Detalla tu propuesta principal</label>
+                            <textarea id="service-offering" rows="3"
+                                placeholder="Ej. Espectáculo de 1 hora con globoflexia y música..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Extras -->
+                    <div class="form-section">
+                        <h3><i class="ph ph-plus-circle"></i> Otros Servicios / Extras</h3>
+                        <div class="services-manager">
+                            <ul id="service-extras-list"></ul>
+                            <div class="form-row" style="margin-top:10px; align-items: flex-end;">
+                                <div class="input-group" style="flex: 2; margin-bottom: 0;">
+                                    <input type="text" id="new-service-extra-name"
+                                        placeholder="Ej. Tatuajes temporales">
+                                </div>
+                                <div class="input-group" style="flex: 1; margin-bottom: 0;">
+                                    <input type="number" id="new-service-extra-price" placeholder="€">
+                                </div>
+                                <button type="button" id="btn-add-service-extra" class="btn-secondary"
+                                    style="width:auto; padding: 14px;">+</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Movilidad -->
+                    <div class="form-section">
+                        <h3><i class="ph ph-truck"></i> Zonas de Movilidad</h3>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 15px;">Añade las
+                            provincias o poblaciones donde puedes desplazarte.</p>
+                        <div class="form-row" style="margin-bottom: 10px; align-items: flex-end;">
+                            <div class="input-group" style="flex: 1; margin-bottom: 0;">
+                                <input type="text" id="new-mobility-zone" placeholder="Ej. Comunidad de Madrid">
+                            </div>
+                            <button type="button" id="btn-add-zone" class="btn-secondary"
+                                style="width:auto; padding: 14px;">Añadir</button>
+                        </div>
+                        <div id="mobility-zones-list" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                    </div>
+
+                    <!-- Optimización de búsqueda -->
+                    <div class="form-section">
+                        <h3><i class="ph ph-magnifying-glass-plus"></i> Optimización de Búsqueda</h3>
+                        <div class="input-group">
+                            <label>Etiquetas / Palabras Clave (Separadas por comas)</label>
+                            <input type="text" id="service-tags"
+                                placeholder="Ej. Animador, Payaso, Magia, Globoflexia...">
+                        </div>
+                    </div>
+
+                    <!-- Redes Sociales -->
+                    <div class="form-section">
+                        <h3><i class="ph ph-share-network"></i> Redes Sociales</h3>
+                        <div class="input-group">
+                            <label><i class="ph ph-instagram-logo"></i> Instagram (Usuario)</label>
+                            <input type="text" id="service-instagram" placeholder="@usuario">
+                        </div>
+                        <div class="input-group">
+                            <label><i class="ph ph-tiktok-logo"></i> TikTok (Usuario)</label>
+                            <input type="text" id="service-tiktok" placeholder="@usuario">
+                        </div>
+                    </div>
+
+                    <!-- Disponibilidad -->
+                    <div class="form-section">
+                        <h3><i class="ph ph-calendar"></i> Bloque de Días Laborables</h3>
+                        <div id="work-days-container"
+                            style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                            <label class="check-item"><input type="checkbox" data-day="1"> Lunes</label>
+                            <label class="check-item"><input type="checkbox" data-day="2"> Martes</label>
+                            <label class="check-item"><input type="checkbox" data-day="3"> Miércoles</label>
+                            <label class="check-item"><input type="checkbox" data-day="4"> Jueves</label>
+                            <label class="check-item"><input type="checkbox" data-day="5"> Viernes</label>
+                            <label class="check-item"><input type="checkbox" data-day="6"> Sábado</label>
+                            <label class="check-item"><input type="checkbox" data-day="0"> Domingo</label>
+                        </div>
+
+                        <h4 style="margin-top: 30px; margin-bottom: 10px; font-size: 0.9rem; color: #ef4444;"> Bloquear
+                            Fechas Específicas</h4>
+                        <div class="form-row" style="margin-bottom: 10px; align-items: center;">
+                            <input type="date" id="service-new-blocked-date">
+                            <button type="button" id="btn-service-block-date"
+                                style="background: #ef4444; color: white; border: none; border-radius: 12px; padding: 14px;">Bloquear</button>
+                        </div>
+                        <div id="service-blocked-dates-list" style="display: flex; flex-direction: column; gap: 5px;">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-save">Guardar Perfil de Servicio</button>
+                </form>
+            </div>
+            <div style="height: 80px;"></div>
+        </section>
+
+        <!-- APP: SERVICE RESERVATIONS -->
+        <section id="service-reservations-view" class="view hidden">
+            <header class="section-title-header">
+                <h2>Mis Contrataciones 🗓️</h2>
+            </header>
+            <div class="container-padding">
+                <div id="service-reservations-list">
+                    <p style="text-align:center; color:#999; margin-top:50px;">Cargando servicios...</p>
+                </div>
+            </div>
+            <div style="height: 80px;"></div>
+        </section>
+
+        <!-- APP: SERVICE NOTIFICATIONS -->
+        <section id="service-notifications-view" class="view hidden">
+            <header class="section-title-header">
+                <h2>Notificaciones 🔔</h2>
+            </header>
+            <div class="container-padding">
+                <div id="service-notifications-list">
+                    <p style="text-align:center; color:#999; margin-top:50px;">No tienes notificaciones nuevas.</p>
+                </div>
+            </div>
+            <div style="height: 80px;"></div>
+        </section>
+
+        <!-- APP: SERVICE BILLING -->
+        <section id="service-billing-view" class="view hidden">
+            <header class="section-title-header">
+                <h2>Facturación Servicio 🧾</h2>
+            </header>
+            <div class="container-padding">
+                <div id="service-billing-list">
+                    <p style="text-align:center; color:#999; margin-top:50px;">Cargando facturación...</p>
+                </div>
+            </div>
+            <div style="height: 80px;"></div>
+        </section>
+
+        <!-- APP: SERVICE STATS -->
+        <section id="service-stats-view" class="view hidden">
+            <header class="section-title-header">
+                <button onclick="switchServiceTab('service-view')" class="back-btn"><i
+                        class="ph ph-arrow-left"></i></button>
+                <h2>Estadísticas Pro 📊</h2>
+            </header>
+            <div class="container-padding">
+                <div id="service-stats-content">
+                    <p style="text-align:center; color:#999; margin-top:50px;">Cargando estadísticas...</p>
+                </div>
             </div>
             <div style="height: 80px;"></div>
         </section>
@@ -618,8 +867,8 @@
                 <div class="booking-controls"
                     style="margin-top: 20px; background: #f9fafb; padding: 15px; border-radius: 12px;">
                     <div style="display: flex; gap: 15px; margin-bottom: 15px;">
-                        <div style="flex: 1;">
-                            <label
+                        <div style="flex: 1;" id="booking-kids-container">
+                            <label id="booking-kids-label"
                                 style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 5px;">Nº
                                 Niños</label>
                             <input type="number" id="booking-kids" min="1" value="10" oninput="calcTotal()"
@@ -659,10 +908,15 @@
         <footer class="global-footer"
             style="padding: 30px 20px 120px 20px; text-align: center; background: #f8f9fa; margin-top: auto;">
             <div class="footer-links" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 15px;">
-                <a href="#" style="color: #718096; text-decoration: none; font-size: 0.8rem;">Política de Privacidad</a>
-                <a href="#" style="color: #718096; text-decoration: none; font-size: 0.8rem;">Política de Cookies</a>
-                <a href="#" style="color: #718096; text-decoration: none; font-size: 0.8rem;">Aviso Legal</a>
-                <a href="#" style="color: #718096; text-decoration: none; font-size: 0.8rem;">Contacto</a>
+                <a href="politica-privacidad.html"
+                    style="color: #718096; text-decoration: none; font-size: 0.8rem;">Política de Privacidad</a>
+                <a href="terminos-condiciones.html"
+                    style="color: #718096; text-decoration: none; font-size: 0.8rem;">Términos y Condiciones</a>
+                <a href="politica-cookies.html"
+                    style="color: #718096; text-decoration: none; font-size: 0.8rem;">Política de Cookies</a>
+                <a href="aviso-legal.html" style="color: #718096; text-decoration: none; font-size: 0.8rem;">Aviso
+                    Legal</a>
+                <a href="contacto.html" style="color: #718096; text-decoration: none; font-size: 0.8rem;">Contacto</a>
             </div>
             <p style="margin-top: 20px; font-size: 0.75rem; color: #a0aec0;">&copy; 2026 Fiesta Party</p>
         </footer>

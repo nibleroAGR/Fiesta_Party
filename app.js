@@ -13,9 +13,16 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// --- Service State ---
+let currentServiceExtras = [];
+let currentServiceGallery = [];
+let currentServiceCover = null;
+let currentMobilityZones = [];
+let currentServiceBlockedDates = [];
+
 // --- State ---
 let currentUser = null;
-let userRole = null; // 'family' or 'business'
+let userRole = null; // 'family', 'business', or 'service'
 let isRegistering = false;
 let intendedRole = null; // Role selected on landing
 
@@ -45,6 +52,10 @@ function showView(viewId) {
     } else if (['business-view', 'business-reservations-view', 'business-notifications-view', 'business-billing-view', 'business-stats-view', 'business-history-view', 'business-billing-history-view'].includes(viewId)) {
         if (mainNav) mainNav.style.display = 'none';
         if (businessNav) businessNav.classList.remove('hidden');
+    } else if (['service-view', 'service-reservations-view', 'service-notifications-view', 'service-billing-view', 'service-stats-view'].includes(viewId)) {
+        if (mainNav) mainNav.style.display = 'none';
+        const serviceNav = document.getElementById('service-nav');
+        if (serviceNav) serviceNav.classList.remove('hidden');
     } else {
         if (mainNav) mainNav.style.display = 'none';
     }
@@ -125,12 +136,13 @@ function showAuth(role) {
 
     if (role === 'family') {
         title.innerText = isRegistering ? "Registro Familia" : "Acceso Familia";
-        auth.role = 'family';
         subtitle.innerText = isRegistering ? "Únete a la comunidad" : "¡Encuentra tu fiesta ideal!";
-    } else {
+    } else if (role === 'business') {
         title.innerText = isRegistering ? "Registro Local" : "Acceso Local";
-        auth.role = 'business';
         subtitle.innerText = "Gestiona tu negocio y reservas";
+    } else if (role === 'service') {
+        title.innerText = isRegistering ? "Registro Servicio" : "Acceso Servicio";
+        subtitle.innerText = "Anuncia tu talento y consigue clientes";
     }
 
     // Reset Form and Button State
@@ -205,7 +217,24 @@ document.getElementById('auth-form').addEventListener('submit', async (e) => {
                     name: name + " Venue",
                     description: "",
                     price: 0,
-                    capacity: 0
+                    capacity: 0,
+                    role: 'business'
+                });
+            }
+
+            // If service, create empty service profile
+            if (intendedRole === 'service') {
+                await db.collection('venues').doc(user.uid).set({
+                    ownerId: user.uid,
+                    name: name,
+                    role: 'service',
+                    description: "",
+                    price: 0,
+                    priceType: 'hour',
+                    mobilityZones: [],
+                    services: [], // for extras
+                    tags: [],
+                    workDays: [1, 2, 3, 4, 5]
                 });
             }
 
@@ -297,6 +326,16 @@ async function handleUserRedirect(uid) {
             switchBusinessTab('business-view', configTab);
             loadBusinessProfile();
             setTimeout(() => updateNotificationBadge(), 1000);
+        } else if (userRole === 'service') {
+            const svcDisplay = document.getElementById('service-name-display');
+            if (svcDisplay) svcDisplay.innerText = data.name || "Servicio";
+
+            const svcTabs = document.querySelectorAll('#service-nav .nav-item');
+            const configTab = svcTabs[3] || svcTabs[0];
+
+            switchServiceTab('service-view', configTab);
+            loadServiceProfile();
+            // setTimeout(() => updateServiceNotificationBadge(), 1000); // To implement
         } else {
             showAlert("Rol no definido");
         }
@@ -307,6 +346,26 @@ async function handleUserRedirect(uid) {
 }
 
 // --- Business Navigation Helper ---
+window.switchServiceTab = (viewId, el) => {
+    showView(viewId);
+    document.querySelectorAll('#service-nav .nav-item').forEach(item => item.classList.remove('active'));
+    if (el) el.classList.add('active');
+
+    if (viewId === 'service-view') loadServiceProfile();
+    if (viewId === 'service-reservations-view') loadServiceReservations();
+    if (viewId === 'service-stats-view') loadServiceStats();
+    if (viewId === 'service-billing-view') loadServiceBilling();
+};
+
+window.switchFamilyTab = (viewId, el) => {
+    showView(viewId);
+    document.querySelectorAll('#family-nav .nav-item').forEach(item => item.classList.remove('active'));
+    if (el) el.classList.add('active');
+
+    if (viewId === 'reservation-view') loadActiveReservation();
+    if (viewId === 'family-view') loadVenues();
+};
+
 window.switchBusinessTab = (viewId, el) => {
     showView(viewId);
 
@@ -337,9 +396,18 @@ auth.onAuthStateChanged(async (user) => {
     }
 });
 
-function logout() {
-    auth.signOut();
-}
+window.logout = async () => {
+    try {
+        await auth.signOut();
+        // Explicitly hide all navs to avoid ghost icons
+        document.querySelectorAll('.bottom-nav').forEach(nav => nav.classList.add('hidden'));
+        showView('landing-view');
+    } catch (err) {
+        console.error("Error signing out:", err);
+        // Fallback for UI if Firebase fails
+        showView('landing-view');
+    }
+};
 
 // --- Global State Extensions ---
 let currentVenueServices = [];
@@ -393,6 +461,22 @@ async function loadBusinessProfile() {
         // Update Stats Display
         document.getElementById('stat-reservations').innerText = data.totalReservations || 0;
         document.getElementById('stat-visits').innerText = data.profileVisits || 0;
+
+        // Migración / Carga de Reglas de Precios
+        window.venuePricingRules = data.pricingRules || [];
+
+        // Si no hay reglas (negocio antiguo), migramos los datos planos existentes
+        if (window.venuePricingRules.length === 0 && (data.price !== undefined || data.scheduleDays)) {
+            window.venuePricingRules.push({
+                id: 'legacy_default',
+                name: 'Tarifa General',
+                days: data.scheduleDays || [1, 2, 3, 4, 5, 6, 0],
+                price: data.price || 0,
+                minKids: data.minKids || 10,
+                slots: data.timeSlots || []
+            });
+        }
+        renderPricingRules();
     }
 }
 
@@ -425,26 +509,139 @@ window.removeService = (idx) => {
 // Schedule Logic
 window.currentSchedule = { openDays: [], timeSlots: [], blockedDates: [] };
 
-document.getElementById('btn-add-slot').addEventListener('click', () => {
-    const time = document.getElementById('new-slot-time').value;
-    if (time && !window.currentSchedule.timeSlots.includes(time)) {
-        window.currentSchedule.timeSlots.push(time);
-        window.currentSchedule.timeSlots.sort();
-        renderSlots();
-        document.getElementById('new-slot-time').value = '';
-    }
-});
+// --- Dynamic Pricing Rules Manager ---
+window.venuePricingRules = [];
 
-window.removeSlot = (idx) => {
-    window.currentSchedule.timeSlots.splice(idx, 1);
-    renderSlots();
+window.addPricingRule = () => {
+    const id = Date.now().toString();
+    window.venuePricingRules.push({
+        id: id,
+        name: "Nuevo Tramo",
+        days: [1, 2, 3, 4, 5], // Por defecto L-V
+        price: 0,
+        minKids: 10,
+        slots: ["17:00"]
+    });
+    renderPricingRules();
+    autoSaveVenue();
 };
 
-function renderSlots() {
-    const container = document.getElementById('slots-list');
-    container.innerHTML = window.currentSchedule.timeSlots.map((t, i) =>
-        `<div style="background:#e0f2fe; color:#0369a1; padding:5px 10px; border-radius:20px; font-size:0.8rem; display:flex; align-items:center; gap:5px;">${t} <button onclick="removeSlot(${i})" style="border:none; bg:none; color:#0369a1; cursor:pointer; font-weight:bold;">x</button></div>`
-    ).join('');
+window.removePricingRule = (id) => {
+    window.venuePricingRules = window.venuePricingRules.filter(r => r.id !== id);
+    renderPricingRules();
+    autoSaveVenue();
+};
+
+window.updateRuleField = (id, field, value) => {
+    const rule = window.venuePricingRules.find(r => r.id === id);
+    if (!rule) return;
+
+    if (field === 'price') rule.price = parseFloat(value) || 0;
+    else if (field === 'minKids') rule.minKids = parseInt(value) || 0;
+    else if (field === 'name') rule.name = value;
+
+    autoSaveVenue();
+};
+
+window.toggleDayInRule = (id, day) => {
+    const rule = window.venuePricingRules.find(r => r.id === id);
+    if (!rule) return;
+
+    const dayNum = parseInt(day);
+    if (rule.days.includes(dayNum)) {
+        rule.days = rule.days.filter(d => d !== dayNum);
+    } else {
+        rule.days.push(dayNum);
+    }
+    autoSaveVenue();
+};
+
+window.addSlotToRule = (ruleId) => {
+    const timeInput = document.getElementById(`new-slot-${ruleId}`);
+    const time = timeInput.value;
+    const rule = window.venuePricingRules.find(r => r.id === ruleId);
+
+    if (time && rule && !rule.slots.includes(time)) {
+        rule.slots.push(time);
+        rule.slots.sort();
+        renderPricingRules();
+        autoSaveVenue();
+    }
+};
+
+window.removeSlotFromRule = (ruleId, idx) => {
+    const rule = window.venuePricingRules.find(r => r.id === ruleId);
+    if (rule) {
+        rule.slots.splice(idx, 1);
+        renderPricingRules();
+        autoSaveVenue();
+    }
+};
+
+function renderPricingRules() {
+    const container = document.getElementById('pricing-rules-container');
+    if (!container) return;
+
+    if (window.venuePricingRules.length === 0) {
+        container.innerHTML = '<p style="text-align:center; padding:20px; color:#999; border:1px dashed #ddd; border-radius:12px;">No hay tarifas configuradas.</p>';
+        return;
+    }
+
+    container.innerHTML = '';
+    const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+    window.venuePricingRules.forEach((rule) => {
+        const card = document.createElement('div');
+        card.className = 'pricing-rule-card';
+        card.style = "background: white; border: 1px solid #eee; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);";
+
+        card.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <input type="text" value="${rule.name}" onchange="updateRuleField('${rule.id}', 'name', this.value)" 
+                    style="font-weight:700; border:none; border-bottom:1px solid transparent; font-size:1.1rem; color:var(--secondary); padding:2px; width:60%;" 
+                    onfocus="this.style.borderBottomColor='#ddd'" onblur="this.style.borderBottomColor='transparent'">
+                <button type="button" onclick="removePricingRule('${rule.id}')" style="background:#fee2e2; color:#ef4444; border:none; padding:8px; border-radius:8px; font-size:0.8rem;">Eliminar</button>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:20px;">
+                <div class="input-group" style="margin-bottom:0;">
+                    <label style="font-size:0.7rem;">Precio Niños (€)</label>
+                    <input type="number" value="${rule.price}" oninput="updateRuleField('${rule.id}', 'price', this.value)" style="padding:10px;">
+                </div>
+                <div class="input-group" style="margin-bottom:0;">
+                    <label style="font-size:0.7rem;">Mínimo Niños</label>
+                    <input type="number" value="${rule.minKids}" oninput="updateRuleField('${rule.id}', 'minKids', this.value)" style="padding:10px;">
+                </div>
+            </div>
+
+            <div style="margin-bottom:20px;">
+                <label style="display:block; font-size:0.7rem; font-weight:700; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase;">Días Aplicables</label>
+                <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;">
+                    ${[1, 2, 3, 4, 5, 6, 0].map(d => `
+                        <label style="font-size:0.8rem; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                            <input type="checkbox" ${rule.days.includes(d) ? 'checked' : ''} onchange="toggleDayInRule('${rule.id}', ${d})"> ${dayNames[d]}
+                        </label>
+                    `).join('')}
+                </div>
+            </div>
+
+            <div>
+                <label style="display:block; font-size:0.7rem; font-weight:700; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase;">Horas disponibles</label>
+                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                    ${rule.slots.map((s, idx) => `
+                        <div style="background:#eff6ff; color:#1e40af; padding:4px 10px; border-radius:20px; font-size:0.75rem; display:flex; align-items:center; gap:5px;">
+                            ${s} <span onclick="removeSlotFromRule('${rule.id}', ${idx})" style="cursor:pointer; font-weight:bold; font-size:1rem; line-height:1;">&times;</span>
+                        </div>
+                    `).join('')}
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <input type="time" id="new-slot-${rule.id}" style="padding:8px; border:1px solid #ddd; border-radius:8px; font-size:0.8rem; flex:1;">
+                    <button type="button" onclick="addSlotToRule('${rule.id}')" style="background:var(--secondary); color:white; border:none; padding:8px 15px; border-radius:8px; font-size:0.8rem;">+</button>
+                </div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
 }
 
 document.getElementById('btn-block-date').addEventListener('click', () => {
@@ -527,8 +724,7 @@ async function autoSaveVenue() {
             services: currentVenueServices,
             gallery: currentVenueGallery,
             coverImage: currentCoverImage,
-            scheduleDays: openDays,
-            timeSlots: window.currentSchedule.timeSlots,
+            pricingRules: window.venuePricingRules,
             blockedDates: window.currentSchedule.blockedDates,
             email: document.getElementById('venue-email').value.trim(),
             phone: document.getElementById('venue-phone').value.trim()
@@ -575,11 +771,292 @@ document.querySelectorAll('input[name="openDays"]').forEach(el => {
     el.addEventListener('change', autoSaveVenue);
 });
 
-// Override submit to trigger save immediately
-document.getElementById('venue-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    autoSaveVenue();
+// --- Service Provider Dashboard Logic ---
+async function loadServiceProfile() {
+    if (!currentUser) return;
+    const svcDisplay = document.getElementById('service-name-display');
+    if (svcDisplay) svcDisplay.innerText = "Cargando...";
+
+    const doc = await db.collection('venues').doc(currentUser.uid).get();
+    if (doc.exists) {
+        const data = doc.data();
+        if (svcDisplay) svcDisplay.innerText = data.name || "Servicio";
+
+        const nameEl = document.getElementById('service-name');
+        if (nameEl) nameEl.value = data.name || "";
+
+        const descEl = document.getElementById('service-desc');
+        if (descEl) descEl.value = data.description || "";
+
+        const phoneEl = document.getElementById('service-phone');
+        if (phoneEl) phoneEl.value = data.phone || "";
+
+        const cityEl = document.getElementById('service-base-city');
+        if (cityEl) cityEl.value = data.city || "";
+
+        const priceEl = document.getElementById('service-price');
+        if (priceEl) priceEl.value = data.price || "";
+
+        const priceTypeEl = document.getElementById('service-price-type');
+        if (priceTypeEl) priceTypeEl.value = data.priceType || "hour";
+
+        const extraHourEl = document.getElementById('service-extra-hour');
+        if (extraHourEl) extraHourEl.value = data.extraHourPrice || "";
+
+        const offeringEl = document.getElementById('service-offering');
+        if (offeringEl) offeringEl.value = data.offering || "";
+
+        const tagsEl = document.getElementById('service-tags');
+        if (tagsEl) tagsEl.value = data.tags ? data.tags.join(', ') : "";
+
+        const instaEl = document.getElementById('service-instagram');
+        if (instaEl) instaEl.value = data.instagram || "";
+
+        const tiktokEl = document.getElementById('service-tiktok');
+        if (tiktokEl) tiktokEl.value = data.tiktok || "";
+
+        // Lists
+        currentServiceExtras = data.services || [];
+        renderServiceExtrasList();
+
+        currentMobilityZones = data.mobilityZones || [];
+        renderMobilityZones();
+
+        currentServiceBlockedDates = data.blockedDates || [];
+        renderServiceBlockedDates();
+
+        // Multi-media
+        if (data.coverImage) {
+            currentServiceCover = data.coverImage;
+            const preview = document.getElementById('service-cover-preview');
+            if (preview) preview.style.backgroundImage = `url(${data.coverImage})`;
+        }
+        currentServiceGallery = data.gallery || [];
+        renderServiceGalleryPreview();
+
+        // Work Days
+        const workDays = data.workDays || [1, 2, 3, 4, 5];
+        document.querySelectorAll('#work-days-container input').forEach(cb => {
+            cb.checked = workDays.includes(parseInt(cb.dataset.day));
+        });
+
+        // Stats
+        const sRes = document.getElementById('service-stat-reservations');
+        if (sRes) sRes.innerText = data.totalReservations || 0;
+        const sVis = document.getElementById('service-stat-visits');
+        if (sVis) sVis.innerText = data.profileVisits || 0;
+    }
+}
+
+let serviceSaveTimeout;
+async function autoSaveService() {
+    clearTimeout(serviceSaveTimeout);
+    serviceSaveTimeout = setTimeout(async () => {
+        if (!currentUser || userRole !== 'service') return;
+
+        const tagString = document.getElementById('service-tags').value || "";
+        const tags = tagString.split(',').map(t => t.trim()).filter(t => t.length > 0);
+
+        const workDays = [];
+        document.querySelectorAll('#work-days-container input:checked').forEach(cb => {
+            workDays.push(parseInt(cb.dataset.day));
+        });
+
+        const updates = {
+            name: document.getElementById('service-name').value,
+            description: document.getElementById('service-desc').value,
+            phone: document.getElementById('service-phone').value,
+            city: document.getElementById('service-base-city').value,
+            price: parseFloat(document.getElementById('service-price').value) || 0,
+            priceType: document.getElementById('service-price-type').value,
+            extraHourPrice: parseFloat(document.getElementById('service-extra-hour').value) || 0,
+            offering: document.getElementById('service-offering').value,
+            tags: tags,
+            instagram: document.getElementById('service-instagram').value,
+            tiktok: document.getElementById('service-tiktok').value,
+            services: currentServiceExtras,
+            mobilityZones: currentMobilityZones,
+            blockedDates: currentServiceBlockedDates,
+            gallery: currentServiceGallery,
+            coverImage: currentServiceCover,
+            workDays: workDays,
+            role: 'service'
+        };
+
+        const btn = document.querySelector('#service-form button[type="submit"]');
+        if (btn) btn.innerText = "Guardando...";
+
+        try {
+            await db.collection('venues').doc(currentUser.uid).update(updates);
+            if (btn) {
+                btn.innerText = "Guardado";
+                setTimeout(() => btn.innerText = "Guardar Perfil de Servicio", 2000);
+            }
+            const svcDisplay = document.getElementById('service-name-display');
+            if (svcDisplay) svcDisplay.innerText = updates.name;
+        } catch (err) {
+            console.error("Auto-save service error:", err);
+            if (btn) btn.innerText = "Error al guardar";
+        }
+    }, 1000);
+}
+
+// Helpers for Service UI
+function renderServiceExtrasList() {
+    const ul = document.getElementById('service-extras-list');
+    if (!ul) return;
+    ul.innerHTML = '';
+    currentServiceExtras.forEach((svc, idx) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${svc.name} - <b>${svc.price}€</b></span> <button type="button" onclick="removeServiceExtra(${idx})">x</button>`;
+        ul.appendChild(li);
+    });
+}
+window.removeServiceExtra = (idx) => {
+    currentServiceExtras.splice(idx, 1);
+    renderServiceExtrasList();
+    autoSaveService();
+}
+
+function renderMobilityZones() {
+    const list = document.getElementById('mobility-zones-list');
+    if (!list) return;
+    list.innerHTML = currentMobilityZones.map((z, i) => `
+        <div style="background:#f3f4f6; color:#374151; padding:6px 12px; border-radius:100px; font-size:0.85rem; display:flex; align-items:center; gap:8px;">
+            ${z} <span onclick="removeMobilityZone(${i})" style="cursor:pointer; font-weight:bold;">&times;</span>
+        </div>
+    `).join('');
+}
+window.removeMobilityZone = (i) => {
+    currentMobilityZones.splice(i, 1);
+    renderMobilityZones();
+    autoSaveService();
+}
+
+function renderServiceBlockedDates() {
+    const container = document.getElementById('service-blocked-dates-list');
+    if (!container) return;
+    container.innerHTML = currentServiceBlockedDates.map((d, i) =>
+        `<div style="display:flex; justify-content:space-between; align-items:center; background:#fee2e2; padding:5px 10px; border-radius:8px; font-size:0.8rem; color:#b91c1c;"><span>${d}</span> <button type="button" onclick="removeServiceBlockedDate(${i})" style="background:none; border:none; color:#b91c1c; cursor:pointer;">✕</button></div>`
+    ).join('');
+}
+window.removeServiceBlockedDate = (idx) => {
+    currentServiceBlockedDates.splice(idx, 1);
+    renderServiceBlockedDates();
+    autoSaveService();
+};
+
+function renderServiceGalleryPreview() {
+    const grid = document.getElementById('service-gallery-preview-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    currentServiceGallery.forEach((img, idx) => {
+        grid.innerHTML += `<div class="gallery-item" style="background-image: url(${img});"><button type="button" onclick="removeServiceGalleryItem(${idx})" style="position:absolute; top:4px; right:4px; background:red; color:white; border:none; border-radius:50%; width:20px; height:20px;">x</button></div>`;
+    });
+}
+window.removeServiceGalleryItem = (idx) => {
+    currentServiceGallery.splice(idx, 1);
+    renderServiceGalleryPreview();
+    autoSaveService();
+}
+
+// Event Listeners for Service Form
+document.addEventListener('DOMContentLoaded', () => {
+    const addExtraBtn = document.getElementById('btn-add-service-extra');
+    if (addExtraBtn) {
+        addExtraBtn.addEventListener('click', () => {
+            const name = document.getElementById('new-service-extra-name').value;
+            const price = document.getElementById('new-service-extra-price').value;
+            if (name && price) {
+                currentServiceExtras.push({ name, price: parseFloat(price) });
+                renderServiceExtrasList();
+                document.getElementById('new-service-extra-name').value = '';
+                document.getElementById('new-service-extra-price').value = '';
+                autoSaveService();
+            }
+        });
+    }
+
+    const addZoneBtn = document.getElementById('btn-add-zone');
+    if (addZoneBtn) {
+        addZoneBtn.addEventListener('click', () => {
+            const zone = document.getElementById('new-mobility-zone').value;
+            if (zone && !currentMobilityZones.includes(zone)) {
+                currentMobilityZones.push(zone);
+                renderMobilityZones();
+                document.getElementById('new-mobility-zone').value = '';
+                autoSaveService();
+            }
+        });
+    }
+
+    const blockDateBtn = document.getElementById('btn-service-block-date');
+    if (blockDateBtn) {
+        blockDateBtn.addEventListener('click', () => {
+            const date = document.getElementById('service-new-blocked-date').value;
+            if (date && !currentServiceBlockedDates.includes(date)) {
+                currentServiceBlockedDates.push(date);
+                currentServiceBlockedDates.sort();
+                renderServiceBlockedDates();
+                document.getElementById('service-new-blocked-date').value = '';
+                autoSaveService();
+            }
+        });
+    }
+
+    const coverIn = document.getElementById('service-cover-input');
+    if (coverIn) {
+        coverIn.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                currentServiceCover = await fileToBase64(file);
+                const preview = document.getElementById('service-cover-preview');
+                if (preview) preview.style.backgroundImage = `url(${currentServiceCover})`;
+                autoSaveService();
+            }
+        });
+    }
+
+    const galIn = document.getElementById('service-gallery-input');
+    if (galIn) {
+        galIn.addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files);
+            for (const file of files) {
+                const base64 = await fileToBase64(file);
+                currentServiceGallery.push(base64);
+            }
+            renderServiceGalleryPreview();
+            autoSaveService();
+        });
+    }
+
+    // Generic auto-save listeners
+    [
+        'service-name', 'service-desc', 'service-phone', 'service-base-city',
+        'service-price', 'service-price-type', 'service-extra-hour',
+        'service-offering', 'service-tags', 'service-instagram', 'service-tiktok'
+    ].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', autoSaveService);
+    });
+
+    document.querySelectorAll('#work-days-container input').forEach(el => {
+        el.addEventListener('change', autoSaveService);
+    });
+
+    const svcForm = document.getElementById('service-form');
+    if (svcForm) {
+        svcForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            autoSaveService();
+        });
+    }
 });
+
+// Re-using fileToBase64 from global if exists, else it will throw. 
+// Assuming it exists as it was in the original file.
+
+// --- Original Logic Wrappers ---
 
 
 // --- Family Dashboard Extensions ---
@@ -1052,7 +1529,7 @@ async function loadActiveReservation() {
             
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
                 <div>
-                    <label style="font-size:0.7rem; color:${statusColor}; font-weight:700; text-transform:uppercase;">LOCAL</label>
+                    <label style="font-size:0.7rem; color:${statusColor}; font-weight:700; text-transform:uppercase;">${v.role === 'service' ? 'SERVICIO' : 'LOCAL'}</label>
                     <div style="font-size:1rem; font-weight:600; color:#1f2937;">${r.venueName}</div>
                 </div>
                 <div>
@@ -1067,10 +1544,12 @@ async function loadActiveReservation() {
                     <label style="font-size:0.7rem; color:${statusColor}; font-weight:700; text-transform:uppercase;">HORA</label>
                     <div style="font-size:0.9rem; font-weight:600; color:#4b5563;">${r.time}</div>
                 </div>
+                ${v.role === 'service' ? '' : `
                 <div>
                     <label style="font-size:0.7rem; color:${statusColor}; font-weight:700; text-transform:uppercase;">NIÑOS</label>
                     <div style="font-size:0.9rem; font-weight:600; color:#4b5563;">${r.kids}</div>
                 </div>
+                `}
             </div>
         </div>
     `;
@@ -1096,16 +1575,18 @@ async function loadActiveReservation() {
         </div>
     `;
 
-    // Action Buttons (show for pending and confirmed reservations)
+    // Action Buttons
     let actionButtonsHTML = '';
     if (r.status === 'confirmed' || r.status === 'pending') {
+        const cancelLabel = (v.role === 'service') ? 'Solicitud de cancelación' : 'Solicitud de cancelación';
+        const chatLabel = (v.role === 'service') ? 'Chat con profesional' : 'Chat con local';
         actionButtonsHTML = `
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button onclick="requestCancellation('${r.venueId}', '${r.date}', '${r.time}', '${r.venueName}')" class="btn-secondary" style="flex: 1; background: #fef2f2; color: #ef4444; border-color: #fecaca;">
-                    <i class="ph ph-x-circle"></i> Solicitud de cancelación
+                    <i class="ph ph-x-circle"></i> ${cancelLabel}
                 </button>
                 <button onclick="openChat('${r.venueId}', '${r.venueName}')" class="btn-primary" style="flex: 1;">
-                    <i class="ph ph-chat-circle-dots"></i> Chat con local
+                    <i class="ph ph-chat-circle-dots"></i> ${chatLabel}
                 </button>
             </div>
         `;
@@ -1143,41 +1624,71 @@ async function loadVenues(filters = {}) {
 
         snapshot.forEach(doc => {
             const v = doc.data();
+            const role = v.role || 'business';
 
             // --- FILTER LOGIC ---
             if (filters.city) {
-                if (!v.city || !v.city.toLowerCase().includes(filters.city.toLowerCase())) return;
+                const searchCity = filters.city.toLowerCase();
+                if (role === 'business') {
+                    if (!v.city || !v.city.toLowerCase().includes(searchCity)) return;
+                } else if (role === 'service') {
+                    const baseCityMatch = v.city && v.city.toLowerCase().includes(searchCity);
+                    const mobilityMatch = v.mobilityZones && v.mobilityZones.some(z => z.toLowerCase().includes(searchCity));
+                    if (!baseCityMatch && !mobilityMatch) return;
+                }
             }
 
             if (filters.date) {
                 const dateObj = new Date(filters.date);
-                const dayOfWeek = dateObj.getDay(); // 0=Sun, 1=Mon...
+                const dayOfWeek = dateObj.getDay();
 
-                // Check Blocked Dates
                 if (v.blockedDates && v.blockedDates.includes(filters.date)) return;
 
-                // Check Open Days
-                if (v.scheduleDays && v.scheduleDays.length > 0 && !v.scheduleDays.includes(dayOfWeek)) return;
-
-                // Check Time Slots (must have at least one)
-                if (!v.timeSlots || v.timeSlots.length === 0) return;
+                if (role === 'business') {
+                    const rules = v.pricingRules || [];
+                    const activeRule = rules.find(r => r.days.includes(dayOfWeek));
+                    if (!activeRule) return;
+                    if (!activeRule.slots || activeRule.slots.length === 0) return;
+                } else if (role === 'service') {
+                    const workDays = v.workDays || [1, 2, 3, 4, 5];
+                    if (!workDays.includes(dayOfWeek)) return;
+                }
             }
 
             count++;
+
+            // --- RENDERING ---
+            let minPrice = v.price || 0;
+            let priceLabel = `Desde ${minPrice}€`;
+
+            if (role === 'business') {
+                const rules = v.pricingRules || [];
+                if (rules.length > 0) {
+                    minPrice = Math.min(...rules.map(r => r.price));
+                    priceLabel = `Desde ${minPrice}€`;
+                }
+            } else if (role === 'service') {
+                const pType = v.priceType === 'hour' ? 'h' : 'serv';
+                priceLabel = `${minPrice}€/${pType}`;
+            }
+
             const coverStyle = v.coverImage ? `background-image: url(${v.coverImage}); background-size:cover;` : `background-color: ${stringToColor(v.name)}`;
+            const badge = role === 'service' ? '<span class="role-badge svc" style="background:var(--primary); color:white; padding:2px 8px; border-radius:12px; font-size:0.7rem; position:absolute; top:10px; right:10px;">Servicio</span>' : '';
 
             grid.innerHTML += `
-            <div class="venue-card" onclick="openVenueDetail('${doc.id}')" style="cursor:pointer; margin-bottom: 20px;">
-                <div class="venue-img" style="${coverStyle}"></div>
+            <div class="venue-card" onclick="openVenueDetail('${doc.id}')" style="cursor:pointer; margin-bottom: 20px; position:relative;">
+                <div class="venue-img" style="${coverStyle}">
+                    ${badge}
+                </div>
                 <div class="venue-info">
                     <div class="venue-header-row">
-                        <h3>${v.name}</h3>
-                        <span class="venue-price">${v.price}€ /niño</span>
+                        <h4 style="font-weight:700; color:var(--text-main); font-size:1.1rem;">${v.name}</h4>
+                        <span class="venue-price">${priceLabel}</span>
                     </div>
-                    <p class="venue-desc">${v.description ? v.description.substring(0, 60) : ''}...</p>
+                    <p class="venue-desc" style="display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-bottom:10px;">${v.description || "Un colaborador genial para tu fiesta."}</p>
                     <div class="venue-footer">
-                        <span><i class="ph ph-map-pin"></i> ${v.city || 'Ubicación n/d'}</span>
-                        <span><i class="ph ph-users"></i> Cap: ${v.capacity}</span>
+                        <span><i class="ph ph-map-pin"></i> ${v.city || "S.C"}</span>
+                        ${role === 'business' ? `<span><i class="ph ph-users"></i> ${v.capacity || "0"} pax</span>` : `<span><i class="ph ph-truck"></i> Movilidad</span>`}
                     </div>
                 </div>
             </div>
@@ -1252,11 +1763,52 @@ window.openVenueDetail = async (venueId) => {
     if (!doc.exists) return;
     const v = doc.data();
 
+    // Get min price for display
+    const rules = v.pricingRules || [];
+    let minPriceDisplay = v.price || 0;
+    if (rules.length > 0) {
+        minPriceDisplay = Math.min(...rules.map(r => r.price));
+    }
+
+    // Store globally for booking calculations
+    window.currentVenueData = v;
+    window.currentVenueId = venueId;
+
     // Fill Data
+    const role = v.role || 'business';
     document.getElementById('detail-name').innerText = v.name;
-    document.getElementById('detail-price').innerText = v.price + '€';
-    document.getElementById('detail-capacity').innerText = v.capacity;
+
+    // Role based labels
+    const priceSuffix = (role === 'service' && v.priceType === 'hour') ? '€/h' : (role === 'service' ? '€/serv' : '€/niño');
+    document.getElementById('detail-price').innerText = (role === 'service') ? `${v.price}${priceSuffix}` : `Desde ${minPriceDisplay}${priceSuffix}`;
+
+    const capLabel = document.querySelector('#venue-detail-view .venue-footer span:nth-child(2)');
+    if (capLabel) {
+        if (role === 'service') {
+            capLabel.innerHTML = `<i class="ph ph-truck"></i> Movilidad`;
+            document.getElementById('detail-capacity').innerText = "Zona";
+        } else {
+            capLabel.innerHTML = `<i class="ph ph-users"></i> <span id="detail-capacity"></span> pax`;
+            document.getElementById('detail-capacity').innerText = v.capacity || "0";
+        }
+    }
+
     document.getElementById('detail-desc').innerText = v.description;
+
+    // Social & Contact
+    let detailMeta = '';
+    if (v.city) detailMeta += `<span><i class="ph ph-map-pin"></i> ${v.city}</span>`;
+    if (v.phone) detailMeta += `<span><i class="ph ph-phone"></i> ${v.phone}</span>`;
+    if (v.instagram) detailMeta += `<span><i class="ph ph-instagram-logo"></i> ${v.instagram}</span>`;
+    if (v.tiktok) detailMeta += `<span><i class="ph ph-tiktok-logo"></i> ${v.tiktok}</span>`;
+
+    // Mobility zones display for services
+    if (role === 'service' && v.mobilityZones && v.mobilityZones.length > 0) {
+        detailMeta += `<div style="margin-top:10px; font-size:0.85rem; color:var(--text-muted);"><strong>Zonas:</strong> ${v.mobilityZones.join(', ')}</div>`;
+    }
+
+    const detailMetaEl = document.querySelector('.venue-detail-meta');
+    if (detailMetaEl) detailMetaEl.innerHTML = detailMeta;
 
     // Cover
     const coverEl = document.getElementById('detail-cover');
@@ -1350,11 +1902,24 @@ window.openVenueDetail = async (venueId) => {
             minKids: v.minKids || 10
         };
 
-        const minKidsVal = v.minKids || 10;
+        const role = v.role || 'business';
         const kidsInput = document.getElementById('booking-kids');
-        if (kidsInput) {
-            kidsInput.value = minKidsVal;
-            kidsInput.min = minKidsVal;
+        const kidsLabel = document.getElementById('booking-kids-label');
+        const kidsContainer = document.getElementById('booking-kids-container');
+
+        if (kidsContainer) {
+            if (role === 'service') {
+                kidsContainer.classList.add('hidden');
+                if (kidsInput) kidsInput.value = 1;
+            } else {
+                kidsContainer.classList.remove('hidden');
+                if (kidsLabel) kidsLabel.innerText = 'Nº Niños';
+                if (kidsInput) {
+                    const minKids = v.minKids || 10;
+                    kidsInput.value = minKids;
+                    kidsInput.min = minKids;
+                }
+            }
         }
 
         const dateInput = document.getElementById('booking-date');
@@ -1389,62 +1954,103 @@ window.validateBookingDate = () => {
     const timeSelect = document.getElementById('booking-time');
     const selectedDate = dateInput.value;
 
-    if (!selectedDate) {
-        timeSelect.disabled = true;
-        return;
-    }
+    if (!dateInput.value) return;
 
-    const dateObj = new Date(selectedDate);
-    const dayOfWeek = dateObj.getDay(); // 0=Sun, 1=Mon...
-    const schedule = window.currentVenueSchedule;
-
-    // 1. Check Blocked Dates
-    if (schedule.blockedDates && schedule.blockedDates.includes(selectedDate)) {
-        showAlert("Lo sentimos, esta fecha no está disponible.");
+    // Check if blocked
+    if (currentVenueData.blockedDates && currentVenueData.blockedDates.includes(dateInput.value)) {
+        showAlert("Este perfil no está disponible en la fecha seleccionada.");
         dateInput.value = '';
         timeSelect.disabled = true;
         return;
     }
 
-    // 2. Check Open Days (If config exists)
-    if (schedule.openDays && schedule.openDays.length > 0 && !schedule.openDays.includes(dayOfWeek)) {
-        showAlert("El local está cerrado este día de la semana.");
-        dateInput.value = '';
-        timeSelect.disabled = true;
-        return;
+    const date = new Date(dateInput.value);
+    const day = date.getUTCDay(); // 0-Sunday, 1-Monday...
+    const role = currentVenueData.role || 'business';
+
+    if (role === 'business') {
+        const rules = currentVenueData.pricingRules || [];
+        const activeRule = rules.find(r => r.days.includes(day));
+
+        if (!activeRule) {
+            showAlert("El local no está disponible los " + (['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados'][day]));
+            dateInput.value = '';
+            timeSelect.innerHTML = '<option value="">Cerrado</option>';
+            timeSelect.disabled = true;
+            return;
+        }
+
+        const slots = activeRule.slots || [];
+        timeSelect.innerHTML = '<option value="">Selecciona hora...</option>' +
+            slots.map(s => `<option value="${s}">${s}</option>`).join('');
+        timeSelect.disabled = false;
+
+        const kidsInput = document.getElementById('booking-kids');
+        if (kidsInput) {
+            kidsInput.min = activeRule.minKids || 1;
+            if (parseInt(kidsInput.value) < kidsInput.min) kidsInput.value = kidsInput.min;
+        }
+    } else if (role === 'service') {
+        const workDays = currentVenueData.workDays || [1, 2, 3, 4, 5];
+        if (!workDays.includes(day)) {
+            showAlert("Este profesional no trabaja los " + (['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados'][day]));
+            dateInput.value = '';
+            timeSelect.innerHTML = '<option value="">No disponible</option>';
+            timeSelect.disabled = true;
+            return;
+        }
+
+        // Default slots for services
+        const slots = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00"];
+        timeSelect.innerHTML = '<option value="">Selecciona hora...</option>' +
+            slots.map(s => `<option value="${s}">${s}</option>`).join('');
+        timeSelect.disabled = false;
+
+        const kidsInput = document.getElementById('booking-kids');
+        if (kidsInput) kidsInput.min = 1;
     }
 
-    // 3. Populate Slots
-    timeSelect.innerHTML = '<option value="">Selecciona hora...</option>';
-    if (schedule.timeSlots && schedule.timeSlots.length > 0) {
-        schedule.timeSlots.forEach(slot => {
-            timeSelect.innerHTML += `<option value="${slot}">${slot}</option>`;
-        });
-        timeSelect.disabled = false;
-    } else {
-        timeSelect.innerHTML = '<option value="default">Horario a convenir</option>';
-        timeSelect.disabled = false;
-    }
-};
+    calcTotal();
+}
 
 // --- Booking Logic ---
 
 window.calcTotal = () => {
-    const kids = parseInt(document.getElementById('booking-kids').value) || 0;
-    const basePrice = window.currentVenuePrice || 0;
+    if (!currentVenueData) return;
 
-    let servicesTotal = 0;
-    const checkboxes = document.querySelectorAll('#detail-services-list input[type="checkbox"]:checked');
-    checkboxes.forEach(cb => {
-        servicesTotal += parseFloat(cb.getAttribute('data-price') || 0);
+    const dateInput = document.getElementById('booking-date');
+    const role = currentVenueData.role || 'business';
+    let basePrice = 0;
+
+    if (role === 'business') {
+        if (dateInput.value) {
+            const date = new Date(dateInput.value);
+            const day = date.getUTCDay();
+            const rules = currentVenueData.pricingRules || [];
+            const activeRule = rules.find(r => r.days.includes(day));
+            if (activeRule) basePrice = activeRule.price;
+        } else {
+            basePrice = currentVenueData.price || 0;
+        }
+    } else {
+        basePrice = currentVenueData.price || 0;
+    }
+
+    const units = parseInt(document.getElementById('booking-kids').value) || 0;
+    let extrasTotal = 0;
+    document.querySelectorAll('#detail-services-list input:checked').forEach(cb => {
+        extrasTotal += parseFloat(cb.dataset.price);
     });
 
-    // Assuming service price is fixed regardless of kids (e.g., "Cake" = 50€ total), 
-    // OR if it's per kid, it should be multiplied. Usually services like Cake/Animation are flat fees.
-    // If user request implied "comprar servicios", flat fee is standard.
+    let total = 0;
+    if (role === 'service') {
+        // Simplified: service always uses base price as total regardless of units
+        total = basePrice + extrasTotal;
+    } else {
+        total = (basePrice * units) + extrasTotal;
+    }
 
-    const total = (kids * basePrice) + servicesTotal;
-    document.getElementById('booking-total').innerText = total.toFixed(2) + '€';
+    document.getElementById('booking-total').innerText = total.toFixed(2) + "€";
 };
 
 window.attemptBooking = async () => {
@@ -1484,37 +2090,41 @@ window.attemptBooking = async () => {
     });
 
     const venueName = document.getElementById('detail-name').innerText;
+    const role = (window.currentVenueData && window.currentVenueData.role) || 'business';
 
     try {
         await db.collection('reservations').add({
             venueId: window.currentVenueId,
             venueName: venueName,
             userId: currentUser.uid,
-            userName: document.getElementById('user-name-display').innerText || "Usuario",
+            userName: (document.getElementById('user-name-display') ? document.getElementById('user-name-display').innerText : "Usuario"),
             userEmail: currentUser.email,
             date: date,
             time: time,
             kids: kids,
             totalPrice: totalVal,
-            services: selectedServices,
+            services: selectedServices.map(s => ({ name: s.name, price: parseFloat(s.price) || 0 })),
             status: 'pending',
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
 
         // Increment Venue Reservation Count (Atomic update)
-        await db.collection('venues').doc(window.currentVenueId).update({
-            totalReservations: firebase.firestore.FieldValue.increment(1)
-        });
+        if (window.currentVenueId) {
+            await db.collection('venues').doc(window.currentVenueId).update({
+                totalReservations: firebase.firestore.FieldValue.increment(1)
+            }).catch(e => console.warn("Incremental update failed:", e));
+        }
 
-        // Daily Stats
-        incrementDailyStat(window.currentVenueId, 'reservations');
+        const successMsg = (role === 'service') ?
+            `¡Solicitud Enviada!\n\nServicio: ${venueName}\nFecha: ${date} a las ${time}\nTotal: ${totalStr}\n\nEl profesional confirmará tu solicitud pronto.` :
+            `¡Reserva Solicitada!\n\nLocal: ${venueName}\nFecha: ${date} a las ${time}\nTotal: ${totalStr}\n\nEl local confirmará tu solicitud pronto.`;
 
-        showAlert(`¡Reserva Solicitada!\n\nLocal: ${venueName}\nFecha: ${date} a las ${time}\nTotal: ${totalStr}\n\nEl local confirmará tu solicitud pronto.`);
+        showAlert(successMsg);
         showView('family-view');
 
     } catch (err) {
-        console.error("Error booking:", err);
-        showAlert("Hubo un error al guardar la reserva");
+        console.error("Error booking details:", err);
+        showAlert("Hubo un error al guardar la reserva. Revisa tu conexión.");
     }
 };
 
@@ -1606,8 +2216,17 @@ async function loadBusinessStats() {
         };
 
         data.forEach(d => {
-            const yearKey = d.year.toString();
-            const monthKey = `${d.year}-${String(d.month).padStart(2, '0')}`;
+            // Defensive checks for legacy data or missing fields
+            let y = d.year;
+            let m = d.month;
+
+            if (!y && d.date) y = parseInt(d.date.split('-')[0]);
+            if (!m && d.date) m = parseInt(d.date.split('-')[1]);
+
+            if (!y || !m) return; // Skip invalid entries
+
+            const yearKey = y.toString();
+            const monthKey = `${y}-${String(m).padStart(2, '0')}`;
 
             if (!stats.years[yearKey]) stats.years[yearKey] = { visits: 0, reservations: 0 };
             if (!stats.months[monthKey]) stats.months[monthKey] = { visits: 0, reservations: 0 };
@@ -1715,11 +2334,11 @@ async function loadBusinessBilling() {
     }
 }
 
-function createBillingCard(b) {
+function createBillingCard(b, isService = false) {
     const total = b.totalPrice || 0;
     const commonRate = 0.10;
     const fiestaCommission = total * commonRate;
-    const venueProfit = total * (1 - commonRate);
+    const profit = total * (1 - commonRate);
 
     // Services breakdown text
     const servicesText = (b.services || []).map(s => `${s.name} (${s.price}€)`).join(', ') || 'Ninguno';
@@ -1732,6 +2351,9 @@ function createBillingCard(b) {
     const div = document.createElement('div');
     div.className = 'card billing-card';
     div.style = `margin-bottom:15px; border-left: 5px solid ${statusColor}; padding: 15px; background: white;`;
+
+    const updateFunc = isService ? 'updateServiceBillingStatus' : 'updateBillingStatus';
+    const profitLabel = isService ? 'Neto Profesional' : 'Neto Local';
 
     div.innerHTML = `
         <div style="display:flex; justify-content:space-between; margin-bottom:12px; align-items: flex-start;">
@@ -1751,17 +2373,17 @@ function createBillingCard(b) {
             </div>
             <div style="padding-left:10px; border-left:2px solid #ddd; margin-bottom:8px; color:#4b5563;">
                 <div>- Comisión Fiesta Party (10%): <span style="color:#ef4444; font-weight:600;">-${fiestaCommission.toFixed(2)}€</span></div>
-                <div style="font-weight:700; color:#059669;">Neto Local: ${venueProfit.toFixed(2)}€</div>
+                <div style="font-weight:700; color:#059669;">${profitLabel}: ${profit.toFixed(2)}€</div>
             </div>
             
             <div style="margin-top:10px; font-size:0.75rem; color:#6b7280; border-top:1px dashed #ccc; padding-top:8px;">
-                <strong>Detalles:</strong> Kids x Price + Serv: (${b.kids} x ...) + [${servicesText}]
+                <strong>Detalles:</strong> [${servicesText}]
             </div>
         </div>
 
         <div style="display:flex; gap:10px; margin-top:12px;">
             ${!isCompleted ? `
-                <button onclick="updateBillingStatus('${b.id}', 'completed')" class="btn-primary" style="flex:1; font-size:0.8rem; padding:8px;">Marcar como Cobrado</button>
+                <button onclick="${updateFunc}('${b.id}', 'completed')" class="btn-primary" style="flex:1; font-size:0.8rem; padding:8px;">Marcar como Cobrado</button>
             ` : ''}
             <button onclick="exportBillingToPDF('${b.id}')" class="btn-secondary" style="flex: ${isCompleted ? '1' : '0.4'}; font-size:0.8rem; padding:8px;">
                 <i class="ph ph-file-pdf"></i> PDF
@@ -1770,6 +2392,17 @@ function createBillingCard(b) {
     `;
     return div;
 }
+
+window.updateServiceBillingStatus = async (resId, status) => {
+    showConfirm(`¿Marcar este servicio como "${status === 'completed' ? 'Efectuado' : 'Pendiente'}"?`, async () => {
+        try {
+            await db.collection('reservations').doc(resId).update({ billingStatus: status });
+            loadServiceBilling();
+        } catch (err) {
+            console.error("Error updating service billing:", err);
+        }
+    });
+};
 
 window.updateBillingStatus = async (resId, status) => {
     showConfirm(`¿Marcar este movimiento como "${status === 'completed' ? 'Efectuado' : 'Pendiente'}"?`, async () => {
@@ -1831,9 +2464,19 @@ window.exportBillingToPDF = async (resId) => {
     if (!doc.exists) return;
     const b = doc.data();
 
+    // Fetch venue data to know the role
+    const vDoc = await db.collection('venues').doc(b.venueId).get();
+    const v = vDoc.exists ? vDoc.data() : { role: 'business' };
+    const isService = v.role === 'service';
+
     const total = b.totalPrice || 0;
     const commission = total * 0.1;
     const net = total * 0.9;
+    const servicesTotal = (b.services || []).reduce((acc, s) => acc + parseFloat(s.price), 0);
+    const baseTotal = (total - servicesTotal);
+
+    const conceptLabel = isService ? 'Reserva de Servicio' : `Reserva Evento (${b.kids} niños)`;
+    const roleLabel = isService ? 'Profesional' : 'Local';
 
     // Create temporary element for PDF
     const temp = document.createElement('div');
@@ -1847,6 +2490,7 @@ window.exportBillingToPDF = async (resId) => {
             <p><strong>ID Evento:</strong> ${resId}</p>
             <p><strong>Fecha Evento:</strong> ${b.date} ${b.time}</p>
             <p><strong>Cliente:</strong> ${b.userName} (${b.userEmail})</p>
+            <p><strong>${roleLabel}:</strong> ${b.venueName}</p>
         </div>
 
         <table style="width:100%; border-collapse:collapse; margin-top:20px;">
@@ -1855,12 +2499,12 @@ window.exportBillingToPDF = async (resId) => {
                 <th style="padding:10px; text-align:right; border:1px solid #ddd;">Total</th>
             </tr>
             <tr>
-                <td style="padding:10px; border:1px solid #ddd;">Reserva Evento (${b.kids} niños)</td>
-                <td style="padding:10px; text-align:right; border:1px solid #ddd;">${(b.totalPrice - (b.services || []).reduce((acc, s) => acc + parseFloat(s.price), 0)).toFixed(2)}€</td>
+                <td style="padding:10px; border:1px solid #ddd;">${conceptLabel}</td>
+                <td style="padding:10px; text-align:right; border:1px solid #ddd;">${baseTotal.toFixed(2)}€</td>
             </tr>
             <tr>
-                <td style="padding:10px; border:1px solid #ddd;">Servicios Adicionales</td>
-                <td style="padding:10px; text-align:right; border:1px solid #ddd;">${(b.services || []).reduce((acc, s) => acc + parseFloat(s.price), 0).toFixed(2)}€</td>
+                <td style="padding:10px; border:1px solid #ddd;">Servicios Adicionales / Extras</td>
+                <td style="padding:10px; text-align:right; border:1px solid #ddd;">${servicesTotal.toFixed(2)}€</td>
             </tr>
             <tr style="font-weight:bold;">
                 <td style="padding:10px; border:1px solid #ddd;">TOTAL BRUTO</td>
@@ -1872,7 +2516,7 @@ window.exportBillingToPDF = async (resId) => {
             <h3 style="margin-top:0;">Desglose Fiesta Party</h3>
             <p>Total recaudado: ${total.toFixed(2)}€</p>
             <p style="color:red;">Comisión Fiesta Party (10%): -${commission.toFixed(2)}€</p>
-            <p style="font-size:1.2rem; font-weight:bold; color:green;">NETO A PERCIBIR POR LOCAL: ${net.toFixed(2)}€</p>
+            <p style="font-size:1.2rem; font-weight:bold; color:green;">NETO A PERCIBIR POR ${roleLabel.toUpperCase()}: ${net.toFixed(2)}€</p>
         </div>
 
         <div style="margin-top:50px; font-size:0.8rem; color:#888; text-align:center;">
@@ -2104,6 +2748,21 @@ async function loadBusinessNotifications() {
 
         container.innerHTML = '';
 
+        // Mark all unread notifications as read
+        const unreadSnapshot = await db.collection('notifications')
+            .where('venueId', '==', currentUser.uid)
+            .where('read', '==', false)
+            .get();
+
+        if (!unreadSnapshot.empty) {
+            const batch = db.batch();
+            unreadSnapshot.forEach(doc => {
+                batch.update(doc.ref, { read: true });
+            });
+            await batch.commit();
+            console.log('Marked', unreadSnapshot.size, 'notifications as read');
+        }
+
         // Limit to 50 most recent
         notifications.slice(0, 50).forEach(notif => {
             renderNotification(notif.id, notif, container);
@@ -2201,15 +2860,26 @@ function loadBusinessChatMessages(chatId) {
         });
 }
 
+// Global variable for notification listener
+let notificationListener = null;
+
 // Update notification badge
 function updateNotificationBadge() {
-    if (!currentUser || userRole !== 'business') return;
+    if (!currentUser || userRole !== 'business') {
+        if (notificationListener) {
+            notificationListener();
+            notificationListener = null;
+        }
+        return;
+    }
 
-    db.collection('notifications')
+    // Unsubscribe from previous listener if exists
+    if (notificationListener) notificationListener();
+
+    notificationListener = db.collection('notifications')
         .where('venueId', '==', currentUser.uid)
         .where('read', '==', false)
-        .get()
-        .then(snapshot => {
+        .onSnapshot(snapshot => {
             const count = snapshot.size;
             const navItem = document.querySelector('#business-nav .nav-item:nth-child(2)'); // Notifications icon
 
@@ -2225,12 +2895,252 @@ function updateNotificationBadge() {
                 navItem.style.position = 'relative';
                 navItem.appendChild(badge);
             }
+        }, err => {
+            console.error('Error in notification badge listener:', err);
         });
 }
 
-// Periodically check for new notifications (every 30 seconds)
-setInterval(() => {
-    if (currentUser && userRole === 'business') {
-        updateNotificationBadge();
+// Initial check for notifications
+// (Now handled by onSnapshot in handleUserRedirect or manual calls)
+
+// --- Service Provider Reservation Management ---
+
+window.loadServiceReservations = async () => {
+    const list = document.getElementById('service-reservations-list');
+    if (!currentUser || !list) return;
+
+    list.innerHTML = '<p style="text-align:center; color:#999; margin-top:50px;">Cargando tus contrataciones...</p>';
+
+    try {
+        const snapshot = await db.collection('reservations')
+            .where('venueId', '==', currentUser.uid)
+            .get();
+
+        if (snapshot.empty) {
+            list.innerHTML = `
+                <div style="text-align:center; padding: 40px 20px;">
+                    <i class="ph ph-calendar-blank" style="font-size: 3rem; color: #cbd5e0; margin-bottom: 15px; display: block;"></i>
+                    <h3 style="color: #4a5568; margin-bottom: 5px;">No tienes contrataciones aún</h3>
+                    <p style="color: #718096; font-size: 0.9rem;">Cuando los usuarios soliciten tus servicios, aparecerán aquí.</p>
+                </div>
+            `;
+            return;
+        }
+
+        const reservations = [];
+        snapshot.forEach(doc => {
+            reservations.push({ id: doc.id, ...doc.data() });
+        });
+
+        // Sort by timestamp desc
+        reservations.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+        list.innerHTML = '';
+        reservations.forEach(r => {
+            let statusBadge = '';
+            let actions = '';
+
+            if (r.status === 'pending') {
+                statusBadge = '<span style="background:#fffbeb; color:#f59e0b; padding:4px 10px; border-radius:12px; font-size:0.75rem; font-weight:700;">PENDIENTE</span>';
+                actions = `
+                    <div style="display:flex; gap:10px; margin-top:15px;">
+                        <button onclick="confirmReservation('${r.id}', 'confirmed')" class="btn-primary" style="flex:1; padding:10px; font-size:0.85rem;">Confirmar</button>
+                        <button onclick="confirmReservation('${r.id}', 'cancelled')" class="btn-secondary" style="flex:1; padding:10px; font-size:0.85rem; background:#fee2e2; color:#ef4444; border-color:#fecaca;">Rechazar</button>
+                    </div>
+                `;
+            } else if (r.status === 'confirmed') {
+                statusBadge = '<span style="background:#f0fdf4; color:#10b981; padding:4px 10px; border-radius:12px; font-size:0.75rem; font-weight:700;">CONFIRMADA</span>';
+            } else if (r.status === 'cancelled') {
+                statusBadge = '<span style="background:#fef2f2; color:#ef4444; padding:4px 10px; border-radius:12px; font-size:0.75rem; font-weight:700;">CANCELADA</span>';
+            }
+
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.style.marginBottom = '15px';
+            card.style.border = '1px solid var(--border-light)';
+
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <div style="font-weight:700; color:var(--text-dark);">${r.userName || 'Usuario'}</div>
+                    ${statusBadge}
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:0.85rem; color:var(--text-muted);">
+                    <div><i class="ph ph-calendar"></i> ${r.date}</div>
+                    <div><i class="ph ph-clock"></i> ${r.time}</div>
+                    <div style="grid-column: span 2; font-weight:700; color:var(--primary); margin-top:5px;">Total: ${r.totalPrice.toFixed(2)}€</div>
+                </div>
+                <div style="margin-top:10px; padding-top:10px; border-top:1px solid #eee;">
+                    <button onclick="openChat('${r.userId}', '${r.userName}')" style="background:none; border:none; color:var(--primary); font-size:0.85rem; font-weight:600; cursor:pointer; padding:0;">
+                        <i class="ph ph-chat-circle-dots"></i> Abrir Chat
+                    </button>
+                </div>
+                ${actions}
+            `;
+            list.appendChild(card);
+        });
+
+    } catch (err) {
+        console.error("Error loading service reservations:", err);
+        list.innerHTML = '<p style="text-align:center; color:#ef4444; padding:20px;">Error al cargar las contrataciones.</p>';
     }
-}, 30000);
+}
+
+window.confirmReservation = async (resId, newStatus) => {
+    const confirmMsg = newStatus === 'confirmed' ? "¿Confirmar este servicio?" : "¿Rechazar este servicio?";
+    if (!confirm(confirmMsg)) return;
+
+    try {
+        const updateData = { status: newStatus };
+
+        if (newStatus === 'confirmed') {
+            updateData.billingStatus = 'pending';
+
+            // Atomic update for venue/service total reservations
+            const venueId = currentUser.uid; // The professional confirming
+            await db.collection('venues').doc(venueId).update({
+                totalReservations: firebase.firestore.FieldValue.increment(1)
+            }).catch(e => console.warn("Increment error:", e));
+
+            // Track Daily Stats
+            incrementDailyStat(venueId, 'reservations');
+        }
+
+        await db.collection('reservations').doc(resId).update(updateData);
+        showAlert(newStatus === 'confirmed' ? "Servicio confirmado correctamente" : "Servicio rechazado");
+        loadServiceReservations();
+    } catch (err) {
+        console.error("Error updating reservation:", err);
+        showAlert("Error al actualizar el estado");
+    }
+}
+
+async function loadServiceBilling() {
+    if (!currentUser) return;
+    const container = document.getElementById('service-billing-list');
+    if (!container) return;
+    container.innerHTML = '<p style="text-align:center; color:#999; margin-top:30px;">Cargando facturación...</p>';
+
+    try {
+        const snapshot = await db.collection('reservations')
+            .where('venueId', '==', currentUser.uid)
+            .where('status', '==', 'confirmed')
+            .get();
+
+        if (snapshot.empty) {
+            container.innerHTML = '<p style="text-align:center; color:#999; margin-top:50px;">No hay facturas pendientes o recientes.</p>';
+            return;
+        }
+
+        const allBilling = [];
+        snapshot.forEach(doc => {
+            allBilling.push({ id: doc.id, ...doc.data() });
+        });
+
+        // Filter: Pending always shown, Completed shown only last 20
+        const pending = allBilling.filter(b => b.billingStatus !== 'completed');
+        const completed = allBilling.filter(b => b.billingStatus === 'completed')
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .slice(0, 20);
+
+        const displayedBilling = [...pending, ...completed];
+
+        if (displayedBilling.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#999; margin-top:50px;">No hay movimientos de facturación.</p>';
+            return;
+        }
+
+        container.innerHTML = '';
+        displayedBilling.forEach(b => {
+            const card = createBillingCard(b, true);
+            container.appendChild(card);
+        });
+
+    } catch (err) {
+        console.error("Error loading service billing:", err);
+        container.innerHTML = '<p style="text-align:center; color:red;">Error al cargar facturación.</p>';
+    }
+}
+
+async function loadServiceStats() {
+    if (!currentUser) return;
+    const container = document.getElementById('service-stats-content');
+    if (!container) return;
+    container.innerHTML = '<p style="text-align:center; color:#999; margin-top:30px;">Calculando estadísticas de servicio...</p>';
+
+    try {
+        const snapshot = await db.collection('daily_stats')
+            .where('venueId', '==', currentUser.uid)
+            .get();
+
+        if (snapshot.empty) {
+            container.innerHTML = '<p style="text-align:center; color:#999; margin-top:50px;">Aún no hay datos estadísticos registrados.</p>';
+            return;
+        }
+
+        const data = [];
+        snapshot.forEach(doc => data.push(doc.data()));
+
+        // Aggregate by Year, Month, Day
+        const stats = {
+            years: {},
+            months: {},
+            days: data.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 30)
+        };
+
+        data.forEach(d => {
+            let y = d.year;
+            let m = d.month;
+
+            // Robust date parsing
+            if ((!y || !m) && d.date && typeof d.date === 'string') {
+                const parts = d.date.split('-');
+                if (parts.length >= 2) {
+                    if (!y) y = parseInt(parts[0]);
+                    if (!m) m = parseInt(parts[1]);
+                }
+            }
+
+            if (!y || !m) return; // Skip invalid entries
+
+            const yearKey = y.toString();
+            const monthKey = `${y}-${String(m).padStart(2, '0')}`;
+
+            if (!stats.years[yearKey]) stats.years[yearKey] = { visits: 0, reservations: 0 };
+            if (!stats.months[monthKey]) stats.months[monthKey] = { visits: 0, reservations: 0 };
+
+            stats.years[yearKey].visits += (d.visits || 0);
+            stats.years[yearKey].reservations += (d.reservations || 0);
+            stats.months[monthKey].visits += (d.visits || 0);
+            stats.months[monthKey].reservations += (d.reservations || 0);
+        });
+
+        let html = `
+            <div class="card" style="margin-bottom:20px;">
+                <h3 style="margin-bottom:15px;"><i class="ph ph-calendar"></i> Resumen Anual</h3>
+                <div style="display:grid; gap:10px;">
+                    ${Object.entries(stats.years).sort((a, b) => b[0] - a[0]).map(([year, val]) => `
+                        <div style="display:flex; justify-content:space-between; padding:10px; background:#f8fafc; border-radius:8px;">
+                            <span style="font-weight:700;">${year}</span>
+                            <span style="font-size:0.9rem;">👁️ ${val.visits} | 📅 ${val.reservations}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            <div class="card">
+                <h3 style="margin-bottom:15px;"><i class="ph ph-clock"></i> Última Actividad</h3>
+                <div style="display:grid; gap:10px;">
+                    ${stats.days.map(d => `
+                        <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee;">
+                            <span style="font-size:0.85rem; color:#666;">${d.date}</span>
+                            <span style="font-size:0.85rem; font-weight:600;">👁️ ${d.visits || 0} | 📅 ${d.reservations || 0}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+        container.innerHTML = html;
+    } catch (err) {
+        console.error("Error loading service stats:", err);
+        container.innerHTML = '<p style="text-align:center; color:red;">Error al cargar estadísticas.</p>';
+    }
+}

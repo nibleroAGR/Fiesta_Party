@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+    <title>Política de Cookies | Fiesta Party 🎈</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        .legal-content {
+            padding: 40px 20px;
+            line-height: 1.8;
+            color: var(--text-main);
+        }
+
+        .legal-content h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .legal-content h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-top: 40px;
+            margin-bottom: 15px;
+            color: var(--secondary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legal-content p {
+            margin-bottom: 20px;
+            font-size: 1rem;
+            color: var(--text-main);
+        }
+
+        .legal-content ul {
+            margin-bottom: 20px;
+            padding-left: 20px;
+        }
+
+        .legal-content li {
+            margin-bottom: 10px;
+            list-style-type: none;
+            position: relative;
+            padding-left: 25px;
+        }
+
+        .legal-content li::before {
+            content: '🍪';
+            position: absolute;
+            left: 0;
+            font-size: 1.1rem;
+        }
+
+        .cookie-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.9rem;
+        }
+
+        .cookie-table th,
+        .cookie-table td {
+            padding: 12px;
+            border: 1px solid var(--border-light);
+            text-align: left;
+        }
+
+        .cookie-table th {
+            background-color: #f8f9fa;
+            font-weight: 700;
+            color: var(--secondary);
+        }
+
+        .back-nav {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-back-legal {
+            background: white;
+            border: 1px solid var(--border-light);
+            padding: 10px 20px;
+            border-radius: 50px;
+            text-decoration: none;
+            color: var(--text-main);
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .legal-card {
+            background: white;
+            border-radius: var(--radius-l);
+            padding: 40px;
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .legal-card {
+                padding: 24px;
+                border-radius: 0;
+                box-shadow: none;
+                border: none;
+            }
+
+            .legal-content h1 {
+                font-size: 1.8rem;
+            }
+
+            .cookie-table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <nav class="back-nav">
+            <a href="index.html" class="btn-back-legal">
+                <i class="ph ph-arrow-left"></i> Volver a Fiesta Party
+            </a>
+        </nav>
+
+        <main class="legal-content">
+            <div class="legal-card">
+                <h1>Política de Cookies</h1>
+                <p>Última actualización: 16 de febrero de 2026</p>
+
+                <p>En <strong>Fiesta Party</strong>, utilizamos cookies y tecnologías similares para mejorar tu
+                    experiencia de navegación, analizar el tráfico del sitio y personalizar el contenido.</p>
+
+                <h2><i class="ph ph-cookie"></i> 1. ¿Qué son las cookies?</h2>
+                <p>Las cookies son pequeños archivos de texto que los sitios web almacenan en tu dispositivo (ordenador,
+                    tablet o móvil) mientras navegas. Ayudan a que el sitio web funcione correctamente y proporcionan
+                    información a los propietarios del sitio.</p>
+
+                <h2><i class="ph ph-list-checks"></i> 2. Tipos de cookies que utilizamos</h2>
+                <ul>
+                    <li><strong>Cookies Técnicas:</strong> Son esenciales para que el sitio funcione. Permiten la
+                        navegación y el uso de las diferentes opciones o servicios (como el acceso a tu cuenta).</li>
+                    <li><strong>Cookies de Personalización:</strong> Permiten recordar información para que accedas al
+                        servicio con determinadas características (por ejemplo, el idioma o la ciudad de búsqueda).</li>
+                    <li><strong>Cookies de Análisis:</strong> Nos permiten cuantificar el número de usuarios y realizar
+                        la medición y análisis estadístico de la utilización que hacen los usuarios de la plataforma.
+                    </li>
+                </ul>
+
+                <h2><i class="ph ph-info"></i> 3. Detalle de cookies utilizadas</h2>
+                <table class="cookie-table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Finalidad</th>
+                            <th>Duración</th>
+                            <th>Propiedad</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>__firebase_auth</td>
+                            <td>Mantener la sesión del usuario iniciada de forma segura.</td>
+                            <td>Sesión / Persistente</td>
+                            <td>Propia (Firebase)</td>
+                        </tr>
+                        <tr>
+                            <td>_ga / _gid</td>
+                            <td>Análisis estadístico de visitas y comportamiento del usuario.</td>
+                            <td>2 años / 24h</td>
+                            <td>De terceros (Google)</td>
+                        </tr>
+                        <tr>
+                            <td>cookie_consent</td>
+                            <td>Almacenar tu preferencia sobre el uso de cookies.</td>
+                            <td>1 año</td>
+                            <td>Propia</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2><i class="ph ph-gear"></i> 4. ¿Cómo puedes gestionar las cookies?</h2>
+                <p>Puedes permitir, bloquear o eliminar las cookies instaladas en tu equipo mediante la configuración de
+                    las opciones del navegador instalado en tu dispositivo:</p>
+                <ul>
+                    <li><strong>Chrome:</strong> Configuración -> Privacidad y seguridad -> Cookies y otros datos de
+                        sitios.</li>
+                    <li><strong>Firefox:</strong> Ajustes -> Privacidad y seguridad -> Cookies y datos del sitio.</li>
+                    <li><strong>Safari:</strong> Preferencias -> Privacidad -> Bloquear todas las cookies.</li>
+                    <li><strong>Edge:</strong> Configuración -> Cookies y permisos del sitio.</li>
+                </ul>
+                <p>Ten en cuenta que si bloqueas las cookies técnicas, es posible que algunas funciones de Fiesta Party
+                    no funcionen correctamente.</p>
+
+                <h2><i class="ph ph-megaphone"></i> 5. Actualizaciones</h2>
+                <p>Podemos modificar esta Política de Cookies en función de nuevas exigencias legislativas o
+                    reglamentarias. Te recomendamos visitar esta página periódicamente.</p>
+            </div>
+        </main>
+
+        <footer class="global-footer" style="padding: 30px 20px; text-align: center; background: #f8f9fa;">
+            <p style="font-size: 0.75rem; color: #a0aec0;">&copy; 2026 Fiesta Party. Todos los derechos reservados.</p>
+        </footer>
+    </div>
+</body>
+
+</html>

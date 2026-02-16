@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+    <title>Aviso Legal | Fiesta Party 🎈</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        .legal-content {
+            padding: 40px 20px;
+            line-height: 1.8;
+            color: var(--text-main);
+        }
+
+        .legal-content h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .legal-content h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-top: 40px;
+            margin-bottom: 15px;
+            color: var(--secondary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legal-content p {
+            margin-bottom: 20px;
+            font-size: 1rem;
+            color: var(--text-main);
+        }
+
+        .legal-content ul {
+            margin-bottom: 20px;
+            padding-left: 20px;
+        }
+
+        .legal-content li {
+            margin-bottom: 10px;
+            list-style-type: none;
+            position: relative;
+            padding-left: 25px;
+        }
+
+        .legal-content li::before {
+            content: '⚖️';
+            position: absolute;
+            left: 0;
+            font-size: 1.1rem;
+        }
+
+        .back-nav {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-back-legal {
+            background: white;
+            border: 1px solid var(--border-light);
+            padding: 10px 20px;
+            border-radius: 50px;
+            text-decoration: none;
+            color: var(--text-main);
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .legal-card {
+            background: white;
+            border-radius: var(--radius-l);
+            padding: 40px;
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            margin-bottom: 40px;
+        }
+
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid var(--primary);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-size: 0.95rem;
+        }
+
+        @media (max-width: 768px) {
+            .legal-card {
+                padding: 24px;
+                border-radius: 0;
+                box-shadow: none;
+                border: none;
+            }
+
+            .legal-content h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <nav class="back-nav">
+            <a href="index.html" class="btn-back-legal">
+                <i class="ph ph-arrow-left"></i> Volver a Fiesta Party
+            </a>
+        </nav>
+
+        <main class="legal-content">
+            <div class="legal-card">
+                <h1>Aviso Legal</h1>
+                <p>Última actualización: 16 de febrero de 2026</p>
+
+                <p>En cumplimiento de lo previsto en la Ley 34/2002, de 11 de julio, de Servicios de la Sociedad de la
+                    Información y de Comercio Electrónico (LSSI-CE), se informa a los usuarios sobre los datos
+                    identificativos del titular de esta plataforma.</p>
+
+                <h2><i class="ph ph-identification-card"></i> 1. Información Identificativa</h2>
+                <div class="info-box">
+                    <strong>Denominación Social:</strong> Fiesta Party (Proyecto en desarrollo)<br>
+                    <strong>Nombre Comercial:</strong> Fiesta Party 🎈<br>
+                    <strong>Domicilio Social:</strong> [Tu Dirección Completar], España<br>
+                    <strong>NIF/CIF:</strong> [Tu NIF/CIF Completar]<br>
+                    <strong>Email de contacto:</strong> <a href="mailto:hola@fiestaparty.es">hola@fiestaparty.es</a><br>
+                    <strong>Actividad:</strong> Plataforma de gestión y reserva de eventos infantiles.
+                </div>
+
+                <h2><i class="ph ph-users-three"></i> 2. Usuarios</h2>
+                <p>El acceso y/o uso de este portal de Fiesta Party atribuye la condición de USUARIO, que acepta, desde
+                    dicho acceso y/o uso, las Condiciones Generales de Uso aquí reflejadas.</p>
+
+                <h2><i class="ph ph-browsers"></i> 3. Uso del Portal</h2>
+                <p>Fiesta Party proporciona el acceso a multitud de informaciones, servicios o datos en Internet
+                    pertenecientes a Fiesta Party o a sus licenciantes a los que el USUARIO pueda tener acceso. El
+                    USUARIO asume la responsabilidad del uso del portal.</p>
+
+                <h2><i class="ph ph-shield-check"></i> 4. Protección de Datos</h2>
+                <p>Fiesta Party cumple con las directrices del Reglamento General de Protección de Datos (RGPD) y demás
+                    normativa vigente en cada momento, y vela por garantizar un correcto uso y tratamiento de los datos
+                    personales del usuario. Para más información, consulte nuestra <a
+                        href="politica-privacidad.html">Política de Privacidad</a>.</p>
+
+                <h2><i class="ph ph-copyright"></i> 5. Propiedad Intelectual e Industrial</h2>
+                <p>Fiesta Party por sí o como cesionaria, es titular de todos los derechos de propiedad intelectual e
+                    industrial de su página web, así como de los elementos contenidos en la misma (a título enunciativo,
+                    imágenes, sonido, audio, vídeo, software o textos; marcas o logotipos, combinaciones de colores,
+                    estructura y diseño, selección de materiales usados, programas de ordenador necesarios para su
+                    funcionamiento, acceso y uso, etc.).</p>
+
+                <h2><i class="ph ph-warning-octagon"></i> 6. Exclusión de Garantías y Responsabilidad</h2>
+                <p>Fiesta Party no se hace responsable, en ningún caso, de los daños y perjuicios de cualquier
+                    naturaleza que pudieran ocasionar, a título enunciativo: errores u omisiones en los contenidos,
+                    falta de disponibilidad del portal o la transmisión de virus o programas maliciosos o lesivos en los
+                    contenidos, a pesar de haber adoptado todas las medidas tecnológicas necesarias para evitarlo.</p>
+
+                <h2><i class="ph ph-arrows-out-line-horizontal"></i> 7. Modificaciones</h2>
+                <p>Fiesta Party se reserva el derecho de efectuar sin previo aviso las modificaciones que considere
+                    oportunas en su portal, pudiendo cambiar, suprimir o añadir tanto los contenidos y servicios que se
+                    presten a través de la misma como la forma en la que éstos aparezcan presentados o localizados en su
+                    portal.</p>
+            </div>
+        </main>
+
+        <footer class="global-footer" style="padding: 30px 20px; text-align: center; background: #f8f9fa;">
+            <p style="font-size: 0.75rem; color: #a0aec0;">&copy; 2026 Fiesta Party. Todos los derechos reservados.</p>
+        </footer>
+    </div>
+</body>
+
+</html>

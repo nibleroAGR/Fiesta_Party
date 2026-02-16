@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+    <title>Política de Privacidad | Fiesta Party 🎈</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        .legal-content {
+            padding: 40px 20px;
+            line-height: 1.8;
+            color: var(--text-main);
+        }
+
+        .legal-content h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .legal-content h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-top: 40px;
+            margin-bottom: 15px;
+            color: var(--secondary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legal-content p {
+            margin-bottom: 20px;
+            font-size: 1rem;
+            color: var(--text-main);
+        }
+
+        .legal-content ul {
+            margin-bottom: 20px;
+            padding-left: 20px;
+        }
+
+        .legal-content li {
+            margin-bottom: 10px;
+            list-style-type: none;
+            position: relative;
+            padding-left: 25px;
+        }
+
+        .legal-content li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .back-nav {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-back-legal {
+            background: white;
+            border: 1px solid var(--border-light);
+            padding: 10px 20px;
+            border-radius: 50px;
+            text-decoration: none;
+            color: var(--text-main);
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .legal-card {
+            background: white;
+            border-radius: var(--radius-l);
+            padding: 40px;
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .legal-card {
+                padding: 24px;
+                border-radius: 0;
+                box-shadow: none;
+                border: none;
+            }
+            .legal-content h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <nav class="back-nav">
+            <a href="index.html" class="btn-back-legal">
+                <i class="ph ph-arrow-left"></i> Volver a Fiesta Party
+            </a>
+        </nav>
+
+        <main class="legal-content">
+            <div class="legal-card">
+                <h1>Política de Privacidad</h1>
+                <p>Última actualización: 16 de febrero de 2026</p>
+
+                <p>En <strong>Fiesta Party</strong>, valoramos tu privacidad y nos comprometemos a proteger tus datos personales. Esta política explica cómo recopilamos, usamos y protegemos la información que nos proporcionas a través de nuestra plataforma.</p>
+
+                <h2><i class="ph ph-user-focus"></i> 1. Responsable del Tratamiento</h2>
+                <p>El responsable del tratamiento de tus datos es Fiesta Party (en adelante, "nosotros"). Puedes contactar con nuestro Delegado de Protección de Datos a través del email: <a href="mailto:privacidad@fiestaparty.es">privacidad@fiestaparty.es</a>.</p>
+
+                <h2><i class="ph ph-database"></i> 2. Datos que Recopilamos</h2>
+                <ul>
+                    <li><strong>Datos de registro:</strong> Nombre completo, correo electrónico y contraseña.</li>
+                    <li><strong>Datos de perfil:</strong> Teléfono, dirección (en caso de empresas) y preferencias de usuario.</li>
+                    <li><strong>Datos de uso:</strong> Información sobre cómo utilizas la aplicación, búsquedas realizadas y reservas solicitadas.</li>
+                    <li><strong>Datos de ubicación:</strong> Solo si otorgas permiso para facilitar la búsqueda de locales cercanos.</li>
+                </ul>
+
+                <h2><i class="ph ph-target"></i> 3. Finalidad del Tratamiento</h2>
+                <p>Utilizamos tus datos para las siguientes finalidades:</p>
+                <ul>
+                    <li>Gestionar tu registro y cuenta de usuario.</li>
+                    <li>Facilitar la reserva de locales y la comunicación entre familias y empresas.</li>
+                    <li>Personalizar tu experiencia en la plataforma.</li>
+                    <li>Enviar notificaciones relevantes sobre tus reservas y actualizaciones del servicio.</li>
+                    <li>Mejorar nuestros servicios mediante análisis estadísticos de uso.</li>
+                </ul>
+
+                <h2><i class="ph ph-shield-check"></i> 4. Legitimación</h2>
+                <p>La base legal para el tratamiento de tus datos es la ejecución del contrato de prestación de servicios (términos y condiciones) y, en su caso, el consentimiento explícito otorgado para finalidades específicas como el envío de comunicaciones comerciales o el acceso a la ubicación.</p>
+
+                <h2><i class="ph ph-share-network"></i> 5. Destinatarios de los Datos</h2>
+                <p>Tus datos no serán cedidos a terceros salvo:</p>
+                <ul>
+                    <li>A los locales o empresas involucradas en tu reserva para la correcta prestación del servicio.</li>
+                    <li>Proveedores de servicios tecnológicos que actúan como encargados del tratamiento (alojamiento en la nube, servicios de email).</li>
+                    <li>Por obligación legal ante autoridades competentes.</li>
+                </ul>
+
+                <h2><i class="ph ph-fingerprint"></i> 6. Tus Derechos</h2>
+                <p>Puedes ejercer tus derechos de acceso, rectificación, supresión, oposición, limitación del tratamiento y portabilidad de los datos enviando un correo a <a href="mailto:privacidad@fiestaparty.es">privacidad@fiestaparty.es</a> adjuntando copia de tu DNI o documento equivalente.</p>
+
+                <h2><i class="ph ph-lock"></i> 7. Seguridad</h2>
+                <p>Implementamos medidas técnicas y organizativas avanzadas para garantizar la seguridad de tus datos y evitar su alteración, pérdida o acceso no autorizado.</p>
+            </div>
+        </main>
+
+        <footer class="global-footer" style="padding: 30px 20px; text-align: center; background: #f8f9fa;">
+            <p style="font-size: 0.75rem; color: #a0aec0;">&copy; 2026 Fiesta Party. Todos los derechos reservados.</p>
+        </footer>
+    </div>
+</body>
+
+</html>
